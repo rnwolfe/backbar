@@ -7,11 +7,14 @@
   "types": "./src/index.ts",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "dev": "echo 'server dev — see specs/api.md (task-004)'"
+    "dev": "bun --hot src/main.ts",
+    "start": "bun src/main.ts",
+    "test": "bun test"
   },
   "dependencies": {
     "@backbar/core": "workspace:*",
     "@backbar/db": "workspace:*",
+    "hono": "^4.12.22",
     "zod": "^3.23.8"
   }
 }
