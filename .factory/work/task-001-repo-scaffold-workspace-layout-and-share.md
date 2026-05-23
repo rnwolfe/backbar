@@ -1,11 +1,11 @@
 ---
 id: task-001
 title: Repo scaffold, workspace layout, and shared core types
-status: ready
+status: done
 priority: med
 estimate: medium
 created: 2026-05-23T03:32:27.013Z
-updated: 2026-05-23T03:32:27.013Z
+updated: 2026-05-23T03:53:35.889Z
 ---
 
 ## Acceptance
@@ -46,4 +46,5 @@ $ bun install               # 12 packages
 $ bunx tsc --noEmit         # clean
 $ bun test                  # 60 pass / 0 fail across 4 files
 ```
+
 
