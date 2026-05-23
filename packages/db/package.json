@@ -7,8 +7,9 @@
   "types": "./src/index.ts",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "migrate": "echo 'db migrate — see specs/data-model.md §1 (task-002)'",
-    "seed": "echo 'db seed — see specs/data-model.md §6 (task-002)'"
+    "test": "bun test",
+    "migrate": "bun run src/bin/migrate.ts",
+    "seed": "bun run src/bin/seed.ts"
   },
   "dependencies": {
     "@backbar/core": "workspace:*",
