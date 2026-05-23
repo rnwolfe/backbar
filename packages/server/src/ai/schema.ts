@@ -9,6 +9,10 @@ export const GeneratedSpec = z.object({
   name: z.string(),
   family: z.string(),
   method: Method,
+  // Codex-style ratio string — e.g. "2 : 0.75 : 0.75" for a sour. Reads against
+  // the FAMILY TEMPLATES the prompt grounds in, so a human can sanity-check the
+  // shape at a glance without recomputing from `ingredients[].amount`.
+  ratios: z.string(),
   glass: z.string(),
   ice: z.string(),
   garnish: z.string(),

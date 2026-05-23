@@ -28,6 +28,7 @@ export const GeneratedSpec = z.object({
   name: z.string(),
   family: z.string(),                 // codex root
   method: Method,
+  ratios: z.string(),                 // codex-template ratio string e.g. "2 : 0.75 : 0.75"
   glass: z.string(), ice: z.string(), garnish: z.string(),
   ingredients: z.array(z.object({
     product_ref: z.string(),          // MUST be an in-stock product_id or category token

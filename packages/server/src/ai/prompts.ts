@@ -19,6 +19,11 @@ DILUTION & TEMP: predict final ABV and added water by method
  (stir ~20-25% dilution, shake ~25-30%); flag drinks that land too hot or too watery.
 SERVICE: choose glass, ice, and garnish appropriate to family + method.
 
+RATIOS: emit the codex-template ratio string in the order ingredients[] is
+written — e.g. "2 : 0.75 : 0.75" for a sour, "2 : 1" for a stirred spirit,
+"1 : 3" for a highball. This lets a human eyeball the family fit without
+recomputing from the amounts.
+
 HARD RULE: every ingredient.product_ref MUST be one of the IN-STOCK refs below
 (either a product_id from the listing or one of the category tokens).
 ref_type MUST be 'product' for a product_id and 'category' for a category token.

@@ -3,7 +3,7 @@ import type { InvBottle, Recipe } from "@backbar/core";
 import { ideate } from "../src/ai/ideate";
 import { importPhoto } from "../src/ai/import-photo";
 import { buildRefSet, inventoryLines, systemPrompt } from "../src/ai/prompts";
-import type { GeneratedSpec } from "../src/ai/schema";
+import { GeneratedSpec } from "../src/ai/schema";
 
 // ── fixtures ──────────────────────────────────────────────────────────────
 
@@ -46,6 +46,7 @@ const validSpec: GeneratedSpec = {
   name: "Daiquiri Riff",
   family: "sour",
   method: "shake",
+  ratios: "2 : 0.75 : 0.5",
   glass: "coupe",
   ice: "shake-only",
   garnish: "lime wheel",
@@ -114,6 +115,14 @@ describe("ai/prompts", () => {
     expect(sys.toLowerCase()).toContain("garnish");
     // hard rule
     expect(sys).toContain("HARD RULE");
+    // ratios grounding (spec arch §3 — output field that mirrors codex templates)
+    expect(sys).toContain("RATIOS");
+  });
+
+  test("GeneratedSpec schema rejects output missing the ratios field", () => {
+    const { ratios: _r, ...withoutRatios } = validSpec as unknown as Record<string, unknown>;
+    expect(GeneratedSpec.safeParse(withoutRatios).success).toBe(false);
+    expect(GeneratedSpec.safeParse(validSpec).success).toBe(true);
   });
 });
 
