@@ -5,7 +5,7 @@ status: done
 priority: med
 estimate: large
 created: 2026-05-23T03:32:27.035Z
-updated: 2026-05-23T03:32:27.035Z
+updated: 2026-05-23T04:40:57.015Z
 ---
 
 ## Acceptance
@@ -28,4 +28,5 @@ updated: 2026-05-23T03:32:27.035Z
   `role=listbox`, `aria-activedescendant` wired to the cursor.
 - `specs/ui-operator.md` written from spec §5/§5.1 (per AGENTS.md "generate from spec section if missing").
 - `bun test`: 138 pass (added `test/fuzzy.test.ts`). `bun run typecheck` + `bun run build` clean.
+
 
