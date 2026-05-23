@@ -5,6 +5,7 @@ import type { Deps } from "../deps";
 import { err, parseBody } from "../errors";
 
 const RecipePatch = Recipe.partial();
+const RecipeConfirm = Recipe.partial({ id: true });
 
 export function recipesRouter(deps: Deps) {
   const r = new Hono();
@@ -90,6 +91,38 @@ export function recipesRouter(deps: Deps) {
     const { changed } = deps.makeable.recompute();
     for (const ch of changed) deps.bus.emit({ type: "makeable.changed", ...ch });
     return c.json(recipesRepo(deps.db).get(id));
+  });
+
+  /**
+   * Human-confirm a photo-import draft (spec ai-engine.md §6). The body is
+   * the draft returned by `POST /recipes/import-photo`, possibly edited by
+   * the operator. We force `source:'photo-import'` + keep `provenance` so
+   * the audit trail can't be sidestepped — but the operator can re-bind any
+   * `freeform` ingredient to a real product before confirming.
+   */
+  r.post("/:id/confirm", async (c) => {
+    const id = c.req.param("id");
+    const parsed = await parseBody(c, RecipeConfirm);
+    if (parsed.error) return parsed.response;
+
+    if (recipesRepo(deps.db).get(id)) {
+      return err(c, 409, "duplicate", `recipe '${id}' already exists`);
+    }
+
+    const draft = Recipe.parse({
+      ...parsed.data,
+      id,
+      source: "photo-import",
+      provenance: parsed.data.provenance ?? null,
+    });
+    if (!draft.provenance?.startsWith("photo:")) {
+      return err(c, 400, "validation", "missing or invalid photo provenance");
+    }
+
+    const created = recipesRepo(deps.db).insert(draft);
+    const { changed } = deps.makeable.recompute();
+    for (const ch of changed) deps.bus.emit({ type: "makeable.changed", ...ch });
+    return c.json(created, 201);
   });
 
   return r;

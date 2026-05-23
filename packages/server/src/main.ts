@@ -4,10 +4,15 @@
  * Stays thin — open DB, migrate, wire deps, attach webhook, serve.
  */
 import { migrate, open } from "@backbar/db";
+import { bootstrapGatewayKey } from "./ai/gateway";
 import { buildApp } from "./app";
 import { buildDeps } from "./deps";
 import { serve } from "./serve";
 import { attachWebhook, fromEnv as webhookFromEnv } from "./webhook";
+
+// Bootstrap AI_GATEWAY_API_KEY from ~/.ai_gateway_api_key (spec §0/§3) before
+// any code reads it — main.ts and app.ts both consult process.env afterwards.
+bootstrapGatewayKey();
 
 const db = open();
 migrate(db);
