@@ -1,11 +1,11 @@
 ---
 id: task-002
 title: SQLite schema, migrations, repositories, and canon seed
-status: ready
+status: done
 priority: med
 estimate: medium
 created: 2026-05-23T03:32:27.025Z
-updated: 2026-05-23T03:32:27.025Z
+updated: 2026-05-23T04:04:17.373Z
 ---
 
 ## Acceptance
@@ -25,4 +25,5 @@ updated: 2026-05-23T03:32:27.025Z
 - Category density defaults from §6 are exposed via `DENSITY_BY_CATEGORY` from `@backbar/core`; the seed re-exports them and the seed report surfaces them so they're observably "loaded".
 - Bin scripts: `bun run --filter @backbar/db migrate` and `... seed`. DB path via `BACKBAR_DB` env (default `backbar.db`).
 - Tests under `packages/db/test/` cover: migrations apply + idempotency, append-only trigger, low_stock + shopping_list view semantics, canon coverage + idempotent re-seed, UUIDv7 shape.
+
 
