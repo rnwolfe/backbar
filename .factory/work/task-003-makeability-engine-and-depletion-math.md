@@ -1,11 +1,11 @@
 ---
 id: task-003
 title: Makeability engine and depletion math
-status: ready
+status: done
 priority: med
 estimate: medium
 created: 2026-05-23T03:32:27.028Z
-updated: 2026-05-23T03:32:27.028Z
+updated: 2026-05-23T04:13:00.791Z
 ---
 
 ## Acceptance
@@ -23,4 +23,5 @@ updated: 2026-05-23T03:32:27.028Z
   - `packages/db/src/repositories.ts` gained `pours.apply({recipe_id, bindings, made_at})` which, transactionally per binding: writes a `reading{source:'pour'}` with `raw:{recipe_id,pour_id,ml}`, updates `bottle.level_ml`, flips `status='empty'` when the residual drops to ≤ `EMPTY_THRESHOLD_ML` (5 ml). `ml=0` bindings (non-depleting units) are passed through with no IO. Pour row is inserted last so a mid-pour failure leaves no orphan record.
   - Tests: `packages/core/test/pour.test.ts` (pure math) and `packages/db/test/pour.test.ts` (integration: exact decrement, source='pour' reading, ml=0 skip, empty-flip threshold, over-draw atomic rollback, uuidv7 pour id, raw provenance).
 - Full suite: 86 pass / 0 fail. Workspace typecheck clean.
+
 
