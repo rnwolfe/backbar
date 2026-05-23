@@ -2,11 +2,11 @@
 id: task-008
 title: "Smart shelf P2a: MQTT broker, single ESP32 node, calibration, settle,
   node-health, webhook alerts"
-status: ready
+status: done
 priority: med
 estimate: large
 created: 2026-05-23T03:32:27.044Z
-updated: 2026-05-23T03:32:27.044Z
+updated: 2026-05-23T14:49:37.895Z
 ---
 
 ## Acceptance
@@ -65,4 +65,5 @@ updated: 2026-05-23T03:32:27.044Z
 
 Full suite: **196 pass / 0 fail** across 23 files. Typecheck clean across
 all workspaces.
+
 
