@@ -1,0 +1,3 @@
+# backbar
+
+Backbar is a local-first home-bar operating system that combines inventory, depletion tracking, recipes, and AI mixology, with a public guest menu projected from currently-makeable drinks. The novel layer is a per-bottle load-cell smart shelf scaling to ~100+ bottles via a multi-node ESP32 fleet over MQTT, but the entire software loop ships P0/P1 with zero hardware — hardware is additive and tracking is per-bottle opt-in (hybrid). Shipping it means a Bun + Hono + bun:sqlite server, React+Vite operator and guest UIs, AI ideation via Vercel AI SDK + Gateway, and a pluggable sensing core where every level observation is a `reading { source: manual | weight | pour }`.

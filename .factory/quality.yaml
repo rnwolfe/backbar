@@ -1,0 +1,17 @@
+# factory:quality-default v2
+# Factory quality checks. Each command runs in the run's worktree after
+# the agent declares done and before the merge into main. Failures are
+# informational (they do not block the merge).
+#
+# These delegate to the project Makefile so quality stays stack-agnostic —
+# wire the real commands into the Makefile targets, not here.
+checks:
+  - name: typecheck
+    command: make typecheck
+    timeoutSeconds: 300
+  - name: lint
+    command: make lint
+    timeoutSeconds: 120
+  - name: test
+    command: make test
+    timeoutSeconds: 600
