@@ -5,7 +5,7 @@ status: done
 priority: med
 estimate: large
 created: 2026-05-23T03:32:27.033Z
-updated: 2026-05-23T03:32:27.033Z
+updated: 2026-05-23T04:30:05.694Z
 ---
 
 ## Acceptance
@@ -26,3 +26,4 @@ updated: 2026-05-23T03:32:27.033Z
 - AI routes (`/ai/ideate`, `/recipes/import-photo`) return `503 ai-disabled` when `AI_GATEWAY_API_KEY` is unset. The full generate+repair loop is task-006.
 - `/menu/publish` writes the snapshot JSON to `GUEST_MENU_OUT_DIR` (default `./guest-menu`). Vercel push is task-007.
 - Tests: 45 new server tests (ingest core, REST routes, HMAC, low-stock, makeable cache, live WS round-trip). Full repo: `bun test` → 131 pass; `bun run typecheck` → clean.
+
