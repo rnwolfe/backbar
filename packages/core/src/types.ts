@@ -31,3 +31,5 @@ export type {
 } from "./makeability";
 
 export type { BalanceIngredient, BalanceFlags } from "./balance";
+
+export type { BottleDepletion } from "./pour";
