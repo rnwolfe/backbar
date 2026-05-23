@@ -1,11 +1,11 @@
 ---
 id: task-006
 title: AI mixology engine and recipe photo import
-status: done
+status: blocked
 priority: med
 estimate: large
 created: 2026-05-23T03:32:27.038Z
-updated: 2026-05-23T03:32:27.038Z
+updated: 2026-05-23T11:44:53.905Z
 ---
 
 ## Acceptance
@@ -49,4 +49,5 @@ updated: 2026-05-23T03:32:27.038Z
 - Tests: `packages/server/test/ai.test.ts` covers prompt grounding,
   generate+repair, riff/shopping-muse modes, photo-import fuzzy match,
   and the confirm route. Whole suite: 154/154 green. Typecheck clean.
+
 
