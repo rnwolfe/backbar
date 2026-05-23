@@ -5,7 +5,7 @@ status: done
 priority: med
 estimate: medium
 created: 2026-05-23T03:32:27.041Z
-updated: 2026-05-23T03:32:27.041Z
+updated: 2026-05-23T14:36:01.338Z
 ---
 
 ## Acceptance
@@ -38,4 +38,5 @@ updated: 2026-05-23T03:32:27.041Z
 - Tests: guest-ui has 15 tests (`menu.ts` grouping/filter/availability,
   `source.ts` payload normalization). Server adds a Caddy-mode publish test.
   Full suite is 171/171 green; every package typechecks.
+
 
