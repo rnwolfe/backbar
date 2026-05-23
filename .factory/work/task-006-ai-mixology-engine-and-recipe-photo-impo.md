@@ -1,7 +1,7 @@
 ---
 id: task-006
 title: AI mixology engine and recipe photo import
-status: ready
+status: done
 priority: med
 estimate: large
 created: 2026-05-23T03:32:27.038Z
@@ -19,5 +19,34 @@ updated: 2026-05-23T03:32:27.038Z
 
 ## Notes
 
-(agent-maintained)
+- AI Gateway wiring: `packages/server/src/ai/gateway.ts` — bootstraps
+  `AI_GATEWAY_API_KEY` from `~/.ai_gateway_api_key` (called from `main.ts`),
+  exposes `getDefaultModel()` and `getVisionModel()` as
+  `gateway('anthropic/claude-sonnet-4')`.
+- Deps: `ai@^5.0.190` + `@ai-sdk/gateway@^2.0.91` (gateway 2.x is the
+  V2-provider series that matches `ai@5`; 3.x is V3 and ships separately).
+- Prompts: `packages/server/src/ai/prompts.ts` — `SYSTEM_BASE` grounds the
+  six balance axes, the codex family templates, dilution math (stir
+  ~20–25%, shake ~25–30%), service (glass/ice/garnish), and the HARD RULE
+  that every `product_ref` MUST appear in the inventory snapshot. The
+  snapshot lists `product_id | category | flavor_tags` plus the set of
+  valid category tokens.
+- Ideate: `packages/server/src/ai/ideate.ts` — generate+repair loop with
+  the SDK handling schema retries and a 2-attempt semantic inventory
+  check on top. After two off-inventory tries returns
+  `{ok:false, reason:"off-inventory"}` — never silently substitutes.
+  Modes: `now` (strict), `riff` (template+rotate-one-axis prompt),
+  shopping muse handled at the route via `validRefs` override + preview.
+- Photo import: `packages/server/src/ai/import-photo.ts` — `generateObject`
+  with image content; fuzzy-matches each extracted label against
+  product name → contains → token overlap → subcategory → category →
+  flavor tag. Unmatched labels stay `freeform`. Draft is returned with
+  `source:'photo-import'` and `provenance:'photo:<sha256>'`.
+- Routes: `POST /ai/ideate`, `GET /ai/shopping?preview=1` (deterministic
+  coverage + optional ideate of the top suggestion), `POST /recipes/
+  import-photo`, and `POST /recipes/:id/confirm` for the human-confirm
+  save path (rejects bodies missing photo provenance).
+- Tests: `packages/server/test/ai.test.ts` covers prompt grounding,
+  generate+repair, riff/shopping-muse modes, photo-import fuzzy match,
+  and the confirm route. Whole suite: 154/154 green. Typecheck clean.
 

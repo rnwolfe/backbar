@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Balance, Method } from "@backbar/core";
+import { Balance, Method, Unit } from "@backbar/core";
 
 /**
  * AI structured output contract (spec ai-engine.md §2). The schema is the
@@ -50,3 +50,29 @@ export const PhotoImportRequest = z.object({
   media_type: z.string().min(1),
 });
 export type PhotoImportRequest = z.infer<typeof PhotoImportRequest>;
+
+/**
+ * Vision-extracted recipe (spec ai-engine.md §6). Ingredients arrive as raw
+ * labels — `import-photo.ts` then fuzzy-matches each label to an existing
+ * product, returning the resolved recipe draft + unresolved labels.
+ */
+export const ImportedRecipeIngredient = z.object({
+  label: z.string().min(1),
+  amount: z.number().positive().nullable(),
+  unit: Unit.nullable(),
+  optional: z.boolean().nullable().optional(),
+  garnish: z.boolean().nullable().optional(),
+});
+export type ImportedRecipeIngredient = z.infer<typeof ImportedRecipeIngredient>;
+
+export const ImportedRecipe = z.object({
+  name: z.string().min(1),
+  family: z.string().nullable(),
+  method: Method.nullable(),
+  glass: z.string().nullable(),
+  ice: z.string().nullable(),
+  garnish: z.string().nullable(),
+  instructions: z.string().nullable(),
+  ingredients: z.array(ImportedRecipeIngredient).min(1),
+});
+export type ImportedRecipe = z.infer<typeof ImportedRecipe>;
