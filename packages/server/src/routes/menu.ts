@@ -31,6 +31,23 @@ export function buildGuestMenu(deps: Deps) {
   return items;
 }
 
+/**
+ * Fire a Vercel deploy hook so the Vercel project rebuilds with the freshly
+ * written snapshot. Deploy hooks are Vercel's canonical "external event
+ * triggers a redeploy" primitive — a single HTTP POST, no token required;
+ * they're per-project URLs operators paste into env as VERCEL_DEPLOY_HOOK.
+ * Failure is non-fatal: the snapshot is on disk, the operator can retry.
+ */
+async function triggerVercelDeploy(url: string): Promise<{ ok: boolean; status?: number; detail?: string }> {
+  try {
+    const res = await fetch(url, { method: "POST" });
+    if (!res.ok) return { ok: false, status: res.status, detail: await res.text().catch(() => "") };
+    return { ok: true, status: res.status };
+  } catch (err) {
+    return { ok: false, detail: err instanceof Error ? err.message : String(err) };
+  }
+}
+
 export function menuRouter(deps: Deps) {
   const r = new Hono();
 
@@ -39,21 +56,45 @@ export function menuRouter(deps: Deps) {
   // Caddyfile rewrites the prefix.
   r.get("/menu", (c) => c.json(buildGuestMenu(deps)));
 
-  // Snapshot publish — writes a JSON projection + a tiny index page to
-  // `guestMenuOutDir`. Vercel push (token-based) is the v0.2 path and lives
-  // in task-007; this route lays the file on disk and returns `{url, count}`
-  // so the operator UI can confirm an opt-in publish round-trip.
+  // POST /menu/publish — behavior depends on the configured serve mode:
+  //
+  //   snapshot (default): rebuild the projection, write menu.json next to the
+  //     pre-built guest-ui assets, and (if VERCEL_DEPLOY_HOOK is set) trigger
+  //     a Vercel redeploy. Returns {mode, url, count} so the operator UI can
+  //     confirm the round-trip.
+  //   caddy: no-op — the live `/guest/menu` endpoint already reflects the
+  //     current inventory, so there's nothing to write. Returns
+  //     {mode:"caddy", url: GUEST_PUBLIC_URL, count} for symmetry.
   r.post("/menu/publish", async (c) => {
     const items = buildGuestMenu(deps);
-    await mkdir(deps.guestMenuOutDir, { recursive: true });
-    await writeFile(
-      join(deps.guestMenuOutDir, "menu.json"),
-      JSON.stringify(items, null, 2),
-      "utf8",
-    );
+
+    if (deps.guestMenu.mode === "caddy") {
+      return c.json({
+        mode: "caddy",
+        url: deps.guestMenu.publicUrl ?? null,
+        count: items.length,
+        note: "Caddy serve mode — /guest/menu is read live; no publish required.",
+      });
+    }
+
+    await mkdir(deps.guestMenu.outDir, { recursive: true });
+    const filePath = join(deps.guestMenu.outDir, "menu.json");
+    await writeFile(filePath, JSON.stringify(items, null, 2), "utf8");
+
+    const fileUrl = `file://${filePath}`;
+    const reported = deps.guestMenu.publicUrl ?? fileUrl;
+
+    let vercel: { triggered: boolean; ok?: boolean; status?: number; detail?: string } | undefined;
+    if (deps.guestMenu.vercelDeployHook) {
+      const result = await triggerVercelDeploy(deps.guestMenu.vercelDeployHook);
+      vercel = { triggered: true, ...result };
+    }
+
     return c.json({
-      url: `file://${deps.guestMenuOutDir}/menu.json`,
+      mode: "snapshot",
+      url: reported,
       count: items.length,
+      ...(vercel ? { vercel } : {}),
     });
   });
 

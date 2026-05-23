@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+  body {
+    font-feature-settings: "liga" 1, "kern" 1, "onum" 1;
+    /* Subtle paper grain — pure CSS, no image asset. */
+    background-image: radial-gradient(
+        circle at 20% 0%,
+        rgba(184, 115, 51, 0.05),
+        transparent 40%
+      ),
+      radial-gradient(circle at 80% 100%, rgba(31, 26, 20, 0.04), transparent 35%);
+  }
+}
+
+@layer components {
+  /* A thin rule the menu sections use as a divider, set in copper. */
+  .editorial-rule {
+    @apply h-px w-12 bg-copper/70;
+  }
+  .small-caps {
+    @apply uppercase tracking-widish text-ink-3 text-xs;
+  }
+  .menu-search {
+    @apply w-full bg-transparent border-b border-rule focus:border-copper outline-none px-1 py-2 text-base placeholder:text-ink-3;
+  }
+  .item-unavailable {
+    @apply opacity-40 line-through decoration-ink-3/60;
+  }
+}

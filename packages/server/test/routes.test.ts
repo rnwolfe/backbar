@@ -148,11 +148,12 @@ describe("REST surface — spec §5 endpoints", () => {
     expect(Object.keys(body[0]!).sort()).toEqual(["family", "garnish", "glass", "ice", "instructions", "name", "tags"]);
   });
 
-  test("POST /menu/publish writes snapshot and returns {url, count}", async () => {
+  test("POST /menu/publish (snapshot mode) writes snapshot and returns {mode, url, count}", async () => {
     const tmp = join(tmpdir(), `backbar-menu-${Date.now()}-${Math.random()}`);
     const { app } = setup({ GUEST_MENU_OUT_DIR: tmp });
     const res = await call(app, "POST", "/menu/publish");
-    const body = (await res.json()) as { url: string; count: number };
+    const body = (await res.json()) as { mode: string; url: string; count: number };
+    expect(body.mode).toBe("snapshot");
     expect(body.count).toBe(1);
     expect(body.url.startsWith("file://")).toBe(true);
     // Read the snapshot back.
@@ -160,6 +161,23 @@ describe("REST surface — spec §5 endpoints", () => {
     expect(await file.exists()).toBe(true);
     const snap = JSON.parse(await file.text()) as Array<{ name: string }>;
     expect(snap[0]?.name).toBe("Daiquiri");
+  });
+
+  test("POST /menu/publish (caddy mode) is a no-op publish and writes no file", async () => {
+    const tmp = join(tmpdir(), `backbar-menu-caddy-${Date.now()}-${Math.random()}`);
+    const { app } = setup({
+      GUEST_MENU_OUT_DIR: tmp,
+      MENU_SERVE_MODE: "caddy",
+      GUEST_PUBLIC_URL: "https://bar.example.com",
+    });
+    const res = await call(app, "POST", "/menu/publish");
+    const body = (await res.json()) as { mode: string; url: string | null; count: number };
+    expect(body.mode).toBe("caddy");
+    expect(body.url).toBe("https://bar.example.com");
+    expect(body.count).toBe(1);
+    // Caddy mode never touches disk.
+    const file = Bun.file(`${tmp}/menu.json`);
+    expect(await file.exists()).toBe(false);
   });
 
   test("POST /ai/ideate without AI key → 503 ai-disabled", async () => {
