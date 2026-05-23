@@ -1,6 +1,7 @@
 import type { DB } from "@backbar/db";
 import { Bus } from "./bus";
 import { MakeableCache } from "./makeable";
+import type { ConfigPayload } from "./mqtt";
 
 /**
  * Shared per-process dependencies. Built once at server start, passed into
@@ -33,6 +34,11 @@ export interface Deps {
    *  with tests; prefer `guestMenu.outDir` going forward. */
   guestMenuOutDir: string;
   guestMenu: GuestMenuConfig;
+  /** Optional MQTT push for config/calibration. When absent (P0/P1, or when
+   *  the broker is offline) calibration writes still land in `sensor_channel`
+   *  — the firmware will pick them up via the retained config topic on its
+   *  next connect, or whenever the operator runs `startMqtt`. */
+  pushConfig?: (device_id: string, payload: ConfigPayload) => void;
 }
 
 export function buildDeps(db: DB, env: NodeJS.ProcessEnv = process.env): Deps {

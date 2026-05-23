@@ -27,3 +27,15 @@ export {
 } from "./webhook";
 export { GeneratedSpec, IdeateRequest, PhotoImportRequest } from "./ai/schema";
 export { buildGuestMenu } from "./routes/menu";
+export {
+  attachSubscriber,
+  handleMqttMessage,
+  startMqtt,
+  topicFor,
+  TOPIC_PATTERNS,
+  TOPIC_PREFIX,
+  type MqttClientLike,
+  type MqttDeps,
+  type StartMqttOptions,
+  type SubscriberHandle,
+} from "./mqtt";
