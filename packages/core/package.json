@@ -1,0 +1,23 @@
+{
+  "name": "@backbar/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schema": "./src/schema.ts",
+    "./units": "./src/units.ts",
+    "./balance": "./src/balance.ts",
+    "./makeability": "./src/makeability.ts",
+    "./types": "./src/types.ts"
+  },
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^3.23.8"
+  }
+}

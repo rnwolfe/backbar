@@ -2,3 +2,38 @@ worktrees/
 .factory/runs/
 node_modules/
 dist/
+build/
+.turbo/
+.cache/
+
+# env
+.env
+.env.local
+.env.*.local
+
+# bun
+bun.lockb
+
+# typescript
+*.tsbuildinfo
+.tsbuildinfo
+
+# editor / os
+.DS_Store
+*.swp
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# generated state
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+*.db
+*.db-journal
+
+# platformio
+.pio/
+.pioenvs/
+.piolibdeps/

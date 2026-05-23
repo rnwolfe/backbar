@@ -1,0 +1,17 @@
+{
+  "name": "@backbar/server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "dev": "echo 'server dev — see specs/api.md (task-004)'"
+  },
+  "dependencies": {
+    "@backbar/core": "workspace:*",
+    "@backbar/db": "workspace:*",
+    "zod": "^3.23.8"
+  }
+}

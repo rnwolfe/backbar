@@ -1,0 +1,14 @@
+{
+  "name": "@backbar/operator-ui",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "dev": "echo 'operator-ui dev — see specs/ui-operator.md (task-005)'",
+    "build": "echo 'operator-ui build — task-005'"
+  },
+  "dependencies": {
+    "@backbar/core": "workspace:*"
+  }
+}

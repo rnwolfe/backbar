@@ -1,0 +1,14 @@
+{
+  "name": "@backbar/guest-ui",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "dev": "echo 'guest-ui dev — see specs/ui-guest.md (task-007)'",
+    "build": "echo 'guest-ui static build — task-007'"
+  },
+  "dependencies": {
+    "@backbar/core": "workspace:*"
+  }
+}
