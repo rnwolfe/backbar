@@ -27,6 +27,25 @@ export interface ShoppingList {
   muse: { product: Partial<Product> & { id: string }; unlocks: string[] }[];
 }
 
+export interface AdminResetBarResponse {
+  ok: boolean;
+  deleted: { bottles: number; products: number };
+}
+
+export interface AdminResetRecipesResponse {
+  ok: boolean;
+  deleted: { recipes: number };
+}
+
+export interface AdminReseedResponse {
+  ok: boolean;
+  report: {
+    products: { inserted: number; skipped: number };
+    bottles: { inserted: number; skipped: number };
+    recipes: { inserted: number; skipped: number };
+  };
+}
+
 /**
  * In dev, Vite proxies `/api/*` → `http://localhost:8787`. In prod (when the
  * UI is served by the same Bun process or a static host) point `VITE_API_BASE`
@@ -61,4 +80,7 @@ export const api = {
   ideate: (brief: string, mode = "make-now") =>
     req<unknown>("/ai/ideate", { method: "POST", body: JSON.stringify({ brief, mode }) }),
   publishMenu: () => req<{ url: string; count: number }>("/menu/publish", { method: "POST" }),
+  adminResetBar: () => req<AdminResetBarResponse>("/admin/reset/bar", { method: "POST" }),
+  adminResetRecipes: () => req<AdminResetRecipesResponse>("/admin/reset/recipes", { method: "POST" }),
+  adminReseed: () => req<AdminReseedResponse>("/admin/reseed", { method: "POST" }),
 };

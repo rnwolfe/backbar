@@ -14,7 +14,8 @@ export type ViewKey =
   | "bottles"
   | "recipes"
   | "shopping"
-  | "nodes";
+  | "nodes"
+  | "settings";
 
 export interface AppStore {
   view: ViewKey;

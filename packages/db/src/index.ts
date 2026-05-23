@@ -22,4 +22,11 @@ export {
   type PourApplyInput,
   type PourApplyResult,
 } from "./repositories";
-export { seed, CANON_RECIPES, DENSITY_BY_CATEGORY, type SeedReport } from "./seed";
+export {
+  seed,
+  CANON_RECIPES,
+  CANON_PRODUCTS,
+  STARTER_BOTTLES,
+  DENSITY_BY_CATEGORY,
+  type SeedReport,
+} from "./seed";

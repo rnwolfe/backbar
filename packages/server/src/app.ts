@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import type { Deps } from "./deps";
+import { adminRouter } from "./routes/admin";
 import { aiRouter, recipesPhotoImportRouter } from "./routes/ai";
 import { bottlesRouter } from "./routes/bottles";
 import { ingestRouter } from "./routes/ingest";
@@ -41,6 +42,7 @@ export function buildApp(deps: Deps) {
   app.route("/pour", pourRouter(deps));
   app.route("/shopping-list", shoppingRouter(deps));
   app.route("/ai", aiRouter(deps, { hasGateway }));
+  app.route("/admin", adminRouter(deps));
   app.route("/guest", menuRouter(deps)); // exposes /guest/menu + /guest/menu/publish
 
   // Operators call /menu/publish (no /guest prefix) per spec api.md §1.

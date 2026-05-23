@@ -9,6 +9,7 @@ import { Catalog } from "./views/Catalog";
 import { Makeability } from "./views/Makeability";
 import { Nodes } from "./views/Nodes";
 import { Recipes } from "./views/Recipes";
+import { Settings } from "./views/Settings";
 import { Shopping } from "./views/Shopping";
 
 interface Toast {
@@ -55,6 +56,7 @@ export function App() {
           {view === "recipes" && <Recipes />}
           {view === "shopping" && <Shopping />}
           {view === "nodes" && <Nodes />}
+          {view === "settings" && <Settings />}
         </main>
       </div>
 

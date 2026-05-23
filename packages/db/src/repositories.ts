@@ -49,6 +49,19 @@ function productFromRow(r: ProductRow): Product {
 }
 
 export const products = (db: DB) => ({
+  /**
+   * Wipe every product. Caller is responsible for clearing bottles first —
+   * `bottle.product_id` is `ON DELETE RESTRICT`, so a non-empty bottle table
+   * will block this and the SQLite error message ("FOREIGN KEY constraint
+   * failed") is intentionally surfaced rather than swallowed. Returns the
+   * count counted *before* the delete so cascade rows don't inflate it.
+   */
+  deleteAll(): number {
+    const n = db.query<{ c: number }, []>("SELECT COUNT(*) AS c FROM product").get()!.c;
+    db.run("DELETE FROM product");
+    return n;
+  },
+
   insert(p: Product): Product {
     const parsed = Product.parse(p);
     db.run(
@@ -117,6 +130,18 @@ function bottleFromRow(r: BottleRow): Bottle {
 }
 
 export const bottles = (db: DB) => ({
+  /**
+   * Wipe every bottle. Readings cascade automatically (ON DELETE CASCADE on
+   * `reading.bottle_id`); `sensor_channel.bottle_id` is set NULL by the same
+   * mechanism, so the device-mapping survives a bar reset. Returns the
+   * pre-delete count so cascade rows don't inflate it.
+   */
+  deleteAll(): number {
+    const n = db.query<{ c: number }, []>("SELECT COUNT(*) AS c FROM bottle").get()!.c;
+    db.run("DELETE FROM bottle");
+    return n;
+  },
+
   insert(b: Bottle): Bottle {
     const parsed = Bottle.parse(b);
     db.run(
@@ -285,6 +310,18 @@ function recipeFromRow(r: RecipeRow, ingredients: RecipeIngredient[]): Recipe {
 }
 
 export const recipes = (db: DB) => ({
+  /**
+   * Wipe every recipe. `recipe_ingredient` rows cascade; `pour.recipe_id`
+   * is set NULL so historical pours survive (they keep their bottle bindings
+   * and made_at — they just stop pointing at a recipe row). Returns the
+   * pre-delete recipe count so cascade rows don't inflate it.
+   */
+  deleteAll(): number {
+    const n = db.query<{ c: number }, []>("SELECT COUNT(*) AS c FROM recipe").get()!.c;
+    db.run("DELETE FROM recipe");
+    return n;
+  },
+
   insert(r: Recipe): Recipe {
     const parsed = Recipe.parse(r);
     db.transaction(() => {

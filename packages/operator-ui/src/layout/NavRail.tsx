@@ -13,6 +13,7 @@ const items: NavItem[] = [
   { key: "recipes", label: "Recipes", icon: "▦" },
   { key: "shopping", label: "Shop", icon: "▨" },
   { key: "nodes", label: "Nodes", icon: "▩" },
+  { key: "settings", label: "Set", icon: "⚙" },
 ];
 
 interface Props {
