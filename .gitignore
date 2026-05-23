@@ -37,3 +37,6 @@ bun.lockb
 .pio/
 .pioenvs/
 .piolibdeps/
+
+# firmware secrets (Wi-Fi + broker creds + device_id)
+packages/firmware/src/secrets.h
