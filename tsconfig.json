@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": [
+    "packages/core/src/**/*.ts",
+    "packages/core/test/**/*.ts",
+    "packages/db/src/**/*.ts",
+    "packages/server/src/**/*.ts",
+    "packages/operator-ui/src/**/*.ts",
+    "packages/operator-ui/src/**/*.tsx",
+    "packages/guest-ui/src/**/*.ts",
+    "packages/guest-ui/src/**/*.tsx"
+  ]
+}

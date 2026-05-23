@@ -1,0 +1,17 @@
+{
+  "name": "@backbar/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "migrate": "echo 'db migrate — see specs/data-model.md §1 (task-002)'",
+    "seed": "echo 'db seed — see specs/data-model.md §6 (task-002)'"
+  },
+  "dependencies": {
+    "@backbar/core": "workspace:*",
+    "zod": "^3.23.8"
+  }
+}

@@ -1,0 +1,6 @@
+# Bun workspace configuration
+# Project: backbar
+
+[install]
+# Hoist workspace deps to root node_modules for fast resolution.
+exact = false
