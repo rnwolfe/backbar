@@ -19,5 +19,7 @@ export {
   sensorChannels,
   nodes,
   queries,
+  type PourApplyInput,
+  type PourApplyResult,
 } from "./repositories";
 export { seed, CANON_RECIPES, DENSITY_BY_CATEGORY, type SeedReport } from "./seed";

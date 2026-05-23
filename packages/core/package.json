@@ -11,6 +11,7 @@
     "./units": "./src/units.ts",
     "./balance": "./src/balance.ts",
     "./makeability": "./src/makeability.ts",
+    "./pour": "./src/pour.ts",
     "./types": "./src/types.ts"
   },
   "scripts": {

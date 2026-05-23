@@ -1,5 +1,6 @@
 import {
   Bottle,
+  depletePour,
   Node,
   Pour,
   Product,
@@ -7,8 +8,12 @@ import {
   Recipe,
   RecipeIngredient,
   SensorChannel,
+  statusAfterDepletion,
+  type BottleDepletion,
+  type PourBinding,
 } from "@backbar/core";
 import type { DB } from "./client";
+import { uuidv7 } from "./ids";
 
 // ─── helpers ─────────────────────────────────────────────────────────────
 const json = (v: unknown) => JSON.stringify(v);
@@ -361,6 +366,21 @@ interface PourRow {
   bottles_used: string;
 }
 
+/** Input to `pours.apply()` — id/timestamps are filled in if omitted. */
+export interface PourApplyInput {
+  id?: string;
+  recipe_id?: string | null;
+  made_at?: number;
+  bindings: PourBinding[];
+}
+
+/** Outcome of `pours.apply()` — useful for WS broadcast in task-004. */
+export interface PourApplyResult {
+  pour: Pour;
+  depletions: BottleDepletion[];
+  readings: Reading[];
+}
+
 export const pours = (db: DB) => ({
   insert(p: Pour): Pour {
     const parsed = Pour.parse(p);
@@ -369,6 +389,92 @@ export const pours = (db: DB) => ({
       [parsed.id, parsed.recipe_id ?? null, parsed.made_at, json(parsed.bottles_used)],
     );
     return parsed;
+  },
+
+  /**
+   * Apply a pour against current inventory — spec §1/§2 + §5 pour path.
+   *
+   * Transactionally, per binding: write a `reading{source:'pour'}` at the
+   * post-pour level, update `bottle.level_ml`, flip `status='empty'` when the
+   * residual drops to/under `EMPTY_THRESHOLD_ML`. The `pour` row is inserted
+   * last so a mid-pour failure leaves no orphan pour record.
+   *
+   * The pour amount and reading level come straight from `depletePour()` so
+   * an HTTP `/pour` route and a future MQTT-derived pour use the same math.
+   */
+  apply(input: PourApplyInput): PourApplyResult {
+    const made_at = input.made_at ?? Date.now();
+    const pour = Pour.parse({
+      id: input.id ?? uuidv7(),
+      recipe_id: input.recipe_id ?? null,
+      made_at,
+      bottles_used: input.bindings,
+    });
+
+    // Snapshot current levels for every bottle the pour touches.
+    const levels = new Map<string, number>();
+    const bottleStatuses = new Map<string, Bottle["status"]>();
+    for (const b of pour.bottles_used) {
+      const row = db
+        .query<BottleRow, [string]>("SELECT * FROM bottle WHERE id = ?")
+        .get(b.bottle_id);
+      if (!row) throw new Error(`pour references unknown bottle: ${b.bottle_id}`);
+      levels.set(b.bottle_id, row.level_ml);
+      bottleStatuses.set(b.bottle_id, row.status as Bottle["status"]);
+    }
+
+    // Pure math — throws on negative ml / over-draw before any IO.
+    const depletions = depletePour(pour.bottles_used, levels);
+    const readings: Reading[] = [];
+
+    db.transaction(() => {
+      for (const d of depletions) {
+        if (d.ml === 0) continue; // non-depleting binding — no IO
+
+        const reading = Reading.parse({
+          id: uuidv7(),
+          bottle_id: d.bottle_id,
+          level_ml: d.new_ml,
+          source: "pour",
+          confidence: 1,
+          raw: { recipe_id: pour.recipe_id, pour_id: pour.id, ml: d.ml },
+          ts: made_at,
+        });
+        db.run(
+          `INSERT INTO reading (id, bottle_id, level_ml, source, confidence, raw, ts)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [
+            reading.id,
+            reading.bottle_id,
+            reading.level_ml,
+            reading.source,
+            reading.confidence,
+            json(reading.raw),
+            reading.ts,
+          ],
+        );
+        readings.push(reading);
+
+        const before = bottleStatuses.get(d.bottle_id)!;
+        const after = statusAfterDepletion(before, d);
+        if (after !== before) {
+          db.run("UPDATE bottle SET level_ml = ?, status = ? WHERE id = ?", [
+            d.new_ml,
+            after,
+            d.bottle_id,
+          ]);
+        } else {
+          db.run("UPDATE bottle SET level_ml = ? WHERE id = ?", [d.new_ml, d.bottle_id]);
+        }
+      }
+
+      db.run(
+        `INSERT INTO pour (id, recipe_id, made_at, bottles_used) VALUES (?, ?, ?, ?)`,
+        [pour.id, pour.recipe_id ?? null, pour.made_at, json(pour.bottles_used)],
+      );
+    })();
+
+    return { pour, depletions, readings };
   },
 
   list(limit = 100): Pour[] {
