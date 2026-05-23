@@ -1,13 +1,15 @@
 # Factory quality interface: make typecheck, make lint, and make test
 # run as quality checks after every run (see .factory/quality.yaml).
-# Replace the stub recipes below with the real commands for this stack.
-.PHONY: typecheck lint test
+.PHONY: dev typecheck lint test
+
+dev:
+	bun run dev
 
 typecheck:
-	@echo "make typecheck: no checks configured yet"
+	bun run typecheck
 
 lint:
-	@echo "make lint: no checks configured yet"
+	@echo "make lint: no linter configured"
 
 test:
-	@echo "make test: no checks configured yet"
+	bun test

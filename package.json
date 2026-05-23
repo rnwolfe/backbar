@@ -11,6 +11,7 @@
     "packages/guest-ui"
   ],
   "scripts": {
+    "dev": "bun run --filter '*' dev",
     "build": "bun run --filter '*' build",
     "test": "bun test",
     "typecheck": "bun run --filter '*' typecheck"
