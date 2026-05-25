@@ -127,12 +127,10 @@ export function BottleDetailOverlay({
       >
         <div
           style={{
-            position: "absolute",
-            top: 14,
-            right: 14,
             display: "flex",
+            justifyContent: "flex-end",
             gap: 6,
-            zIndex: 2,
+            marginBottom: 14,
           }}
         >
           {onEdit ? (
