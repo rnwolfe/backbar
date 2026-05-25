@@ -197,6 +197,8 @@ export function FormInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
     <input
       {...props}
       style={{
+        width: "100%",
+        boxSizing: "border-box",
         background: T.surface2,
         border: `1px solid ${T.hairline2}`,
         color: T.ink,
@@ -216,6 +218,9 @@ export function FormTextarea(props: React.TextareaHTMLAttributes<HTMLTextAreaEle
     <textarea
       {...props}
       style={{
+        width: "100%",
+        boxSizing: "border-box",
+        display: "block",
         background: T.surface2,
         border: `1px solid ${T.hairline2}`,
         color: T.ink,
