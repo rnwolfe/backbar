@@ -3,6 +3,7 @@ import type { DB } from "./client";
 import { uuidv7 } from "./ids";
 import {
   bottles,
+  categories,
   nodes,
   pours,
   productTags,
@@ -12,6 +13,7 @@ import {
   sensorChannels,
 } from "./repositories";
 import { STARTER_BOTTLES } from "../seed/bottles";
+import { STARTER_CATEGORIES } from "../seed/categories";
 import { CANON_PRODUCTS } from "../seed/products";
 import { CANON_RECIPES } from "../seed/canon";
 import { channelLayoutFor, nodesAtNow, STARTER_NODES } from "../seed/nodes";
@@ -29,6 +31,8 @@ export { CANON_RECIPES } from "../seed/canon";
 export { CANON_PRODUCTS } from "../seed/products";
 export type { StarterProduct } from "../seed/products";
 export { STARTER_BOTTLES } from "../seed/bottles";
+export { STARTER_CATEGORIES } from "../seed/categories";
+export type { StarterCategory } from "../seed/categories";
 export { STARTER_NODES } from "../seed/nodes";
 
 interface InsertCounts {
@@ -37,6 +41,7 @@ interface InsertCounts {
 }
 
 export interface SeedReport {
+  categories: InsertCounts;
   products: InsertCounts;
   product_tags: InsertCounts;
   bottles: InsertCounts;
@@ -60,6 +65,7 @@ export interface SeedReport {
  * recipes → pours (FK), bottles → readings (FK).
  */
 export function seed(db: DB): SeedReport {
+  const categoriesRepo = categories(db);
   const productsRepo = products(db);
   const productTagsRepo = productTags(db);
   const bottlesRepo = bottles(db);
@@ -68,6 +74,19 @@ export function seed(db: DB): SeedReport {
   const channelsRepo = sensorChannels(db);
   const poursRepo = pours(db);
   const readingsRepo = readings(db);
+
+  // Categories — insert any starter rows that aren't already present. Idempotent;
+  // operator edits (renamed labels, custom hues) survive a re-seed because we
+  // skip rows whose id already exists.
+  const categoryCounts: InsertCounts = { inserted: 0, skipped: 0 };
+  for (const c of STARTER_CATEGORIES) {
+    if (categoriesRepo.get(c.id)) {
+      categoryCounts.skipped += 1;
+    } else {
+      categoriesRepo.insert(c);
+      categoryCounts.inserted += 1;
+    }
+  }
 
   const productCounts: InsertCounts = { inserted: 0, skipped: 0 };
   // Tag insertion is idempotent (INSERT OR IGNORE on the composite PK), so
@@ -191,6 +210,7 @@ export function seed(db: DB): SeedReport {
   }
 
   return {
+    categories: categoryCounts,
     products: productCounts,
     product_tags: productTagCounts,
     bottles: bottleCounts,

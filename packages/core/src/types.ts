@@ -1,6 +1,7 @@
 // Re-export the inferred TS types so consumers can `import type { Bottle } from "@backbar/core/types"`
 // without pulling in Zod at the call site.
 export type {
+  Category,
   Product,
   ProductTag,
   Bottle,

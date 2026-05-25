@@ -1,5 +1,5 @@
 import { useEffect, useRef, useSyncExternalStore } from "react";
-import type { Product, Recipe } from "@backbar/core";
+import type { Category, Product, Recipe } from "@backbar/core";
 import {
   api,
   type BottleWithProduct,
@@ -13,6 +13,7 @@ import {
   type TopRecipeRow,
 } from "../api/client";
 import { connectLive, type ConnState, type LiveEvent } from "../api/ws";
+import { setCategoryRegistry } from "../data/derive";
 import { uuid } from "../util/uuid";
 
 export type ViewKey =
@@ -64,6 +65,7 @@ function persistTweaks(t: Tweaks) {
 export interface AppStore {
   view: ViewKey;
   conn: ConnState;
+  categories: Category[];
   products: Product[];
   bottles: BottleWithProduct[];
   recipes: Recipe[];
@@ -89,6 +91,7 @@ type Listener = () => void;
 const initial: AppStore = {
   view: "bottles",
   conn: "connecting",
+  categories: [],
   products: [],
   bottles: [],
   recipes: [],
@@ -153,6 +156,7 @@ export const store = {
   },
   async hydrate() {
     const [
+      categories,
       products,
       bottles,
       recipes,
@@ -165,6 +169,7 @@ export const store = {
       topBottles,
       telemetry,
     ] = await Promise.all([
+      api.categories().catch<Category[]>(() => []),
       api.products(),
       api.bottles(),
       api.recipes(),
@@ -177,7 +182,9 @@ export const store = {
       api.poursTopBottles(28).catch<TopBottleRow[]>(() => []),
       api.telemetry().catch<Telemetry | null>(() => null),
     ]);
+    setCategoryRegistry(categories);
     set({
+      categories,
       products,
       bottles,
       recipes,
@@ -190,6 +197,15 @@ export const store = {
       topBottles,
       telemetry,
     });
+  },
+  async refreshCategories() {
+    try {
+      const categories = await api.categories();
+      setCategoryRegistry(categories);
+      set({ categories });
+    } catch {
+      // Non-blocking — Settings retries via the explicit refresh button.
+    }
   },
   async refreshShopping() {
     try {

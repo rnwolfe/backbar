@@ -6,7 +6,7 @@ import { useMemo, useState } from "react";
 import { Cell, Pill, SectionHead } from "../console/Cells";
 import { PageHead } from "../console/Chrome";
 import { T, accent } from "../console/tokens";
-import { CONSOLE_CATEGORIES, catOf } from "../data/derive";
+import { catOf } from "../data/derive";
 import { store, useStore } from "../store/useStore";
 
 interface Props {
@@ -20,6 +20,7 @@ export function Catalog({ onAddProduct, onEditProduct, onDuplicateProduct, onPic
   const tweaks = useStore((s) => s.tweaks);
   const products = useStore((s) => s.products);
   const bottles = useStore((s) => s.bottles);
+  const categoryRegistry = useStore((s) => s.categories);
   const A = accent(tweaks.accent).primary;
 
   const bottleCountByProduct = useMemo(() => {
@@ -35,10 +36,10 @@ export function Catalog({ onAddProduct, onEditProduct, onDuplicateProduct, onPic
     const set = new Set<string>();
     for (const p of products) set.add(p.category);
     const ordered: string[] = [];
-    for (const c of CONSOLE_CATEGORIES) if (set.has(c.id)) ordered.push(c.id);
+    for (const c of categoryRegistry) if (set.has(c.id)) ordered.push(c.id);
     for (const id of set) if (!ordered.includes(id)) ordered.push(id);
     return ordered;
-  }, [products]);
+  }, [products, categoryRegistry]);
 
   const filtered = useMemo(
     () =>

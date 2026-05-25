@@ -1,5 +1,6 @@
 import {
   Bottle,
+  Category,
   depletePour,
   Node,
   Pour,
@@ -21,6 +22,73 @@ const json = (v: unknown) => JSON.stringify(v);
 const parseJson = <T>(s: string | null | undefined, fallback: T): T =>
   s == null || s === "" ? fallback : (JSON.parse(s) as T);
 const bool = (v: unknown): number => (v ? 1 : 0);
+
+// ─── category (palette registry) ─────────────────────────────────────────
+interface CategoryRow {
+  id: string;
+  label: string;
+  hue: number;
+  sort_order: number;
+  created_at: number;
+}
+
+function categoryFromRow(r: CategoryRow): Category {
+  return Category.parse(r);
+}
+
+export const categories = (db: DB) => ({
+  list(): Category[] {
+    return db
+      .query<CategoryRow, []>("SELECT * FROM category ORDER BY sort_order, label")
+      .all()
+      .map(categoryFromRow);
+  },
+
+  get(id: string): Category | null {
+    const row = db
+      .query<CategoryRow, [string]>("SELECT * FROM category WHERE id = ?")
+      .get(id);
+    return row ? categoryFromRow(row) : null;
+  },
+
+  insert(c: Omit<Category, "created_at"> & { created_at?: number }): Category {
+    const parsed = Category.parse({ ...c, created_at: c.created_at ?? Date.now() });
+    db.run(
+      "INSERT INTO category (id, label, hue, sort_order, created_at) VALUES (?, ?, ?, ?, ?)",
+      [parsed.id, parsed.label, parsed.hue, parsed.sort_order, parsed.created_at],
+    );
+    return parsed;
+  },
+
+  update(id: string, patch: Partial<Pick<Category, "label" | "hue" | "sort_order">>): Category | null {
+    const existing = this.get(id);
+    if (!existing) return null;
+    const merged = { ...existing, ...patch };
+    db.run("UPDATE category SET label = ?, hue = ?, sort_order = ? WHERE id = ?", [
+      merged.label,
+      merged.hue,
+      merged.sort_order,
+      id,
+    ]);
+    return merged;
+  },
+
+  /**
+   * How many products currently reference this category id? Used by the
+   * DELETE handler to refuse deleting in-use rows.
+   */
+  productCount(id: string): number {
+    return (
+      db
+        .query<{ c: number }, [string]>("SELECT COUNT(*) AS c FROM product WHERE category = ?")
+        .get(id)?.c ?? 0
+    );
+  },
+
+  delete(id: string): void {
+    db.run("DELETE FROM category WHERE id = ?", [id]);
+  },
+});
 
 // ─── product ─────────────────────────────────────────────────────────────
 interface ProductRow {

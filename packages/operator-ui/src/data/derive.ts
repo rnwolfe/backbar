@@ -15,9 +15,13 @@ export interface ConsoleCategory {
 }
 
 /**
- * Category palette. Keys mirror the strings present in `packages/db/seed`
- * (gin, bourbon, rye, amaro, vermouth, liqueur, bitters, citrus, juice, syrup-*,
- * spirit). Anything unrecognized falls back to a neutral hue.
+ * Static fallback palette — used on first render before the server's
+ * /categories list arrives, and as the floor when the server returns an
+ * empty registry. Operators edit / add / delete categories from Settings,
+ * persisted in the `category` table; the live list overlays this default.
+ *
+ * The runtime registry below is what `catOf` / `groupByCat` consult; views
+ * that need the reactive list should read `useStore(s => s.categories)`.
  */
 export const CONSOLE_CATEGORIES: ConsoleCategory[] = [
   { id: "gin", label: "Gin", hue: 178 },
@@ -28,6 +32,7 @@ export const CONSOLE_CATEGORIES: ConsoleCategory[] = [
   { id: "tequila", label: "Tequila", hue: 84 },
   { id: "mezcal", label: "Mezcal", hue: 42 },
   { id: "brandy", label: "Brandy", hue: 22 },
+  { id: "absinthe", label: "Absinthe", hue: 120 },
   { id: "amaro", label: "Amaro", hue: 355 },
   { id: "vermouth", label: "Vermouth", hue: 340 },
   { id: "liqueur", label: "Liqueur", hue: 300 },
@@ -42,8 +47,19 @@ export const CONSOLE_CATEGORIES: ConsoleCategory[] = [
 
 const FALLBACK_CATEGORY: ConsoleCategory = { id: "_", label: "Other", hue: 220 };
 
+// Mutable runtime registry — defaults to the static list; the store calls
+// `setCategoryRegistry` after /categories loads so `catOf` / `groupByCat`
+// pick up operator edits (renamed labels, custom hues, new categories).
+let registry: ConsoleCategory[] = [...CONSOLE_CATEGORIES];
+
+export function setCategoryRegistry(list: { id: string; label: string; hue: number }[]) {
+  registry = list.length
+    ? list.map((c) => ({ id: c.id, label: c.label, hue: c.hue }))
+    : [...CONSOLE_CATEGORIES];
+}
+
 export const catOf = (id: string | null | undefined): ConsoleCategory =>
-  CONSOLE_CATEGORIES.find((c) => c.id === id) ?? { ...FALLBACK_CATEGORY, id: id ?? "_" };
+  registry.find((c) => c.id === id) ?? { ...FALLBACK_CATEGORY, id: id ?? "_" };
 
 /** Decorated bottle row — adds `pct`, `low`/`crit`, derived `slot`, sparkline. */
 export interface DecoratedBottle {
@@ -113,7 +129,7 @@ export function groupByCat(bottles: DecoratedBottle[]): { cat: ConsoleCategory; 
     byId.set(b.category, list);
   }
   const ordered: { cat: ConsoleCategory; bottles: DecoratedBottle[] }[] = [];
-  for (const meta of CONSOLE_CATEGORIES) {
+  for (const meta of registry) {
     const list = byId.get(meta.id);
     if (list && list.length) ordered.push({ cat: meta, bottles: list });
     byId.delete(meta.id);

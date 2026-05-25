@@ -12,7 +12,6 @@ import { Cell, Pill, SectionHead } from "../console/Cells";
 import { PageHead } from "../console/Chrome";
 import { T, accent } from "../console/tokens";
 import {
-  CONSOLE_CATEGORIES,
   catOf,
   decorateBottle,
   type DecoratedBottle,
@@ -30,6 +29,7 @@ type View = "grid" | "ribbon" | "list";
 export function Bottles({ onPickBottle, onAddBottle }: Props) {
   const tweaks = useStore((s) => s.tweaks);
   const bottlesRaw = useStore((s) => s.bottles);
+  const categoriesList = useStore((s) => s.categories);
   const nodes = useStore((s) => s.nodes);
   const telemetry = useStore((s) => s.telemetry);
   const bottlesFilter = useStore((s) => s.bottlesFilter);
@@ -108,8 +108,8 @@ export function Bottles({ onPickBottle, onAddBottle }: Props) {
         <SectionHead right={`${filtered.length}/${decorated.length}`}>SHELVED</SectionHead>
         <div style={{ padding: "8px 0", flex: 1, overflowY: "auto" }}>
           {[
-            ...CONSOLE_CATEGORIES.filter((c) => allCategories.includes(c.id)),
-            ...allCategories.filter((id) => !CONSOLE_CATEGORIES.some((c) => c.id === id)).map(catOf),
+            ...categoriesList.filter((c) => allCategories.includes(c.id)),
+            ...allCategories.filter((id) => !categoriesList.some((c) => c.id === id)).map(catOf),
           ].map((cat) => {
             const list = decorated.filter((b) => b.category === cat.id);
             if (!list.length) return null;

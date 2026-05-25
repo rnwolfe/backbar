@@ -13,6 +13,7 @@ import { Cell, Pill, SectionHead } from "../console/Cells";
 import { PageHead } from "../console/Chrome";
 import { T, accent } from "../console/tokens";
 import { store, useStore } from "../store/useStore";
+import { SettingsCategories } from "./SettingsCategories";
 
 type Pending = "reset-bar" | "reset-recipes" | "reseed" | null;
 
@@ -201,6 +202,10 @@ export function Settings() {
         </Cell>
       </div>
 
+      <div style={{ padding: "0 16px 24px" }}>
+        <SettingsCategories />
+      </div>
+
       <SectionHead>ABOUT</SectionHead>
       <div
         style={{
@@ -275,10 +280,14 @@ function formatReseed(r: AdminReseedResponse): string {
   const p = r.report.products;
   const b = r.report.bottles;
   const rc = r.report.recipes;
+  const cats = r.report.categories;
   return [
     `reseed →`,
+    cats ? `  categories +${cats.inserted} new, ${cats.skipped} already present` : null,
     `  products  +${p.inserted} new, ${p.skipped} already present`,
     `  bottles   +${b.inserted} new, ${b.skipped} already present`,
     `  recipes   +${rc.inserted} new, ${rc.skipped} already present`,
-  ].join("\n");
+  ]
+    .filter((line): line is string => line !== null)
+    .join("\n");
 }

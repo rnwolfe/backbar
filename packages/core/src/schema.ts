@@ -21,6 +21,19 @@ export type NodeStatus = z.infer<typeof NodeStatus>;
 const Slug = z.string().regex(/^[a-z0-9][a-z0-9-]*$/, "must be kebab-case slug");
 const Id = z.string().min(1);
 
+// ─── category (palette registry) ─────────────────────────────────────────
+// Operators manage the category list from Settings. `product.category` is a
+// free-text slug — this registry adds a display label + hue so the Console
+// can render category swatches without a hardcoded TS palette.
+export const Category = z.object({
+  id: Slug,
+  label: z.string().min(1),
+  hue: z.number().int().min(0).max(360),
+  sort_order: z.number().int().default(0),
+  created_at: z.number().int(),
+});
+export type Category = z.infer<typeof Category>;
+
 // ─── product ──────────────────────────────────────────────────────────────
 // Structured-metadata fields per specs/inventory-model.md §3a. All nullish
 // so existing rows + minimal Add Product forms still validate.

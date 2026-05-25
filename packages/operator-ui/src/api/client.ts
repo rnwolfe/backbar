@@ -1,5 +1,6 @@
 import type {
   Bottle,
+  Category,
   Node as NodeRow,
   Product,
   Reading,
@@ -235,6 +236,7 @@ export interface AdminResetRecipesResponse {
 export interface AdminReseedResponse {
   ok: boolean;
   report: {
+    categories?: { inserted: number; skipped: number };
     products: { inserted: number; skipped: number };
     bottles: { inserted: number; skipped: number };
     recipes: { inserted: number; skipped: number };
@@ -264,6 +266,16 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  categories: () => req<Category[]>("/categories"),
+  createCategory: (body: { id: string; label: string; hue: number; sort_order?: number }) =>
+    req<Category>("/categories", { method: "POST", body: JSON.stringify(body) }),
+  patchCategory: (id: string, patch: Partial<Pick<Category, "label" | "hue" | "sort_order">>) =>
+    req<Category>(`/categories/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    }),
+  deleteCategory: (id: string) =>
+    req<unknown>(`/categories/${encodeURIComponent(id)}`, { method: "DELETE" }),
   products: () => req<Product[]>("/products"),
   bottles: () => req<BottleWithProduct[]>("/bottles"),
   bottleDetail: (id: string) => req<BottleDetail>(`/bottles/${encodeURIComponent(id)}/detail`),

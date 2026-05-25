@@ -14,8 +14,7 @@
 import { useMemo, useState } from "react";
 import type { Product } from "@backbar/core";
 import { api, type ProductLookupResult, type ProductTagRow } from "../../../api/client";
-import { CONSOLE_CATEGORIES } from "../../../data/derive";
-import { store } from "../../../store/useStore";
+import { store, useStore } from "../../../store/useStore";
 import { ConSelect } from "../../Select";
 import { T } from "../../tokens";
 import { FormInput, FormRow, FormShell, FormTextarea, toSlug } from "./FormShell";
@@ -69,6 +68,7 @@ const COMMON_NAMESPACES = ["smugglers-cove", "cocktail-codex", "flavor", "operat
 export function AddProductOverlay({ onClose, onToast, mode = "create", initial }: Props) {
   const seed = useMemo<FormState>(() => initialForm(mode, initial), [mode, initial]);
   const [form, setForm] = useState<FormState>(seed);
+  const categoryRegistry = useStore((s) => s.categories);
   // Edit mode locks the slug; duplicate seeds a fresh slug from the source
   // name and treats it as user-touched so AI lookup doesn't overwrite it.
   const [idTouched, setIdTouched] = useState(mode !== "create");
@@ -306,7 +306,7 @@ export function AddProductOverlay({ onClose, onToast, mode = "create", initial }
           <FieldShell suggested={suggested.has("category")}>
             <ConSelect
               value={form.category}
-              options={CONSOLE_CATEGORIES.map((c) => ({ value: c.id, label: c.label, hint: c.id }))}
+              options={categoryRegistry.map((c) => ({ value: c.id, label: c.label, hint: c.id }))}
               onChange={(v) => update("category", v)}
             />
           </FieldShell>
