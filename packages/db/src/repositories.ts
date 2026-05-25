@@ -23,6 +23,51 @@ const parseJson = <T>(s: string | null | undefined, fallback: T): T =>
   s == null || s === "" ? fallback : (JSON.parse(s) as T);
 const bool = (v: unknown): number => (v ? 1 : 0);
 
+// ─── feature_flag (operator-toggleable, sparse) ──────────────────────────
+interface FeatureFlagRow {
+  key: string;
+  enabled: number;
+  updated_at: number;
+}
+
+export interface FeatureFlagOverride {
+  key: string;
+  enabled: boolean;
+  updated_at: number;
+}
+
+export const featureFlags = (db: DB) => ({
+  /** Read every override row. Missing keys fall back to registry defaults. */
+  listOverrides(): FeatureFlagOverride[] {
+    return db
+      .query<FeatureFlagRow, []>("SELECT * FROM feature_flag")
+      .all()
+      .map((r) => ({ key: r.key, enabled: r.enabled === 1, updated_at: r.updated_at }));
+  },
+
+  getOverride(key: string): FeatureFlagOverride | null {
+    const row = db
+      .query<FeatureFlagRow, [string]>("SELECT * FROM feature_flag WHERE key = ?")
+      .get(key);
+    return row ? { key: row.key, enabled: row.enabled === 1, updated_at: row.updated_at } : null;
+  },
+
+  /** Upsert an override. Returns the persisted row. */
+  setOverride(key: string, enabled: boolean): FeatureFlagOverride {
+    const ts = Date.now();
+    db.run(
+      `INSERT INTO feature_flag (key, enabled, updated_at) VALUES (?, ?, ?)
+       ON CONFLICT(key) DO UPDATE SET enabled = excluded.enabled, updated_at = excluded.updated_at`,
+      [key, enabled ? 1 : 0, ts],
+    );
+    return { key, enabled, updated_at: ts };
+  },
+
+  clearOverride(key: string): void {
+    db.run("DELETE FROM feature_flag WHERE key = ?", [key]);
+  },
+});
+
 // ─── category (palette registry) ─────────────────────────────────────────
 interface CategoryRow {
   id: string;

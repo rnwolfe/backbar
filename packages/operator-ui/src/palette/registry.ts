@@ -31,6 +31,12 @@ export interface Command {
   keywords?: string[];
   icon?: string;
   argKind?: ArgKind;
+  /**
+   * If set, the command is hidden from the palette unless the named flag is
+   * currently enabled. Resolved at palette render time; toggling the flag
+   * makes the command appear/disappear without a reload.
+   */
+  requiresFlag?: string;
   run(ctx: AppCtx, arg?: Entity): void | Promise<void>;
 }
 

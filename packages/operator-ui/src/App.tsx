@@ -26,7 +26,7 @@ import { TweaksPanel } from "./console/TweaksPanel";
 import { T, accent } from "./console/tokens";
 import { Palette } from "./palette/Palette";
 import "./palette/commands";
-import { store, useBootstrap, useStore, type ViewKey } from "./store/useStore";
+import { store, useBootstrap, useFlag, useStore, type ViewKey } from "./store/useStore";
 import { uuid } from "./util/uuid";
 import { decorateBottle, joinRecipes, type DecoratedBottle, type JoinedRecipe } from "./data/derive";
 import { Bottles } from "./views/Bottles";
@@ -67,6 +67,7 @@ export function App() {
   const view = viewFromPath(location.pathname);
 
   const conn = useStore((s) => s.conn);
+  const shelfEnabled = useFlag("shelf");
   const nodes = useStore((s) => s.nodes);
   const bottlesRaw = useStore((s) => s.bottles);
   const recipesRaw = useStore((s) => s.recipes);
@@ -217,9 +218,10 @@ export function App() {
           onlineNodes={onlineNodes}
           totalNodes={nodes.length}
           lowCount={lowCount}
-          showFleetTicker={tweaks.showFleetTickerInTopBar}
+          showFleetTicker={tweaks.showFleetTickerInTopBar && shelfEnabled}
           onOpenPalette={() => setPaletteOpen(true)}
           accentColor={accentColor}
+          hiddenTabs={shelfEnabled ? undefined : ["shelf"]}
         />
 
         <main style={{ flex: 1, minHeight: 0, display: "flex", position: "relative", zIndex: 1 }}>
@@ -262,7 +264,11 @@ export function App() {
             <Route
               path="/shelf"
               element={
-                <Shelf onCalibrate={(deviceId, channel) => setActiveCalibrate({ deviceId, channel })} />
+                shelfEnabled ? (
+                  <Shelf onCalibrate={(deviceId, channel) => setActiveCalibrate({ deviceId, channel })} />
+                ) : (
+                  <Navigate to="/dash" replace />
+                )
               }
             />
             <Route path="/menu" element={<Menu />} />

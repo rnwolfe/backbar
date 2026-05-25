@@ -4,6 +4,7 @@ import { adminRouter } from "./routes/admin";
 import { aiRouter, recipesPhotoImportRouter } from "./routes/ai";
 import { bottlesRouter } from "./routes/bottles";
 import { categoriesRouter } from "./routes/categories";
+import { flagsRouter } from "./routes/flags";
 import { ingestRouter } from "./routes/ingest";
 import { makeableRouter } from "./routes/makeable";
 import { menuRouter } from "./routes/menu";
@@ -30,6 +31,7 @@ export function buildApp(deps: Deps) {
   app.get("/healthz", (c) => c.json({ ok: true }));
 
   app.route("/categories", categoriesRouter(deps));
+  app.route("/flags", flagsRouter(deps));
   app.route("/products", productsRouter(deps));
   app.route("/bottles", bottlesRouter(deps));
 

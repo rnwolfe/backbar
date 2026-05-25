@@ -18,7 +18,8 @@ export type LiveEvent =
       status: "online" | "offline";
       last_seen: number | null;
     }
-  | { type: "lowstock.crossed"; bottle_id: string; level_ml: number };
+  | { type: "lowstock.crossed"; bottle_id: string; level_ml: number }
+  | { type: "flag.changed"; key: string; enabled: boolean };
 
 export type ConnState = "connecting" | "open" | "closed";
 

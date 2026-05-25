@@ -12,6 +12,7 @@ export {
 export { uuidv7 } from "./ids";
 export {
   categories,
+  featureFlags,
   products,
   productTags,
   bottles,
@@ -21,6 +22,7 @@ export {
   sensorChannels,
   nodes,
   queries,
+  type FeatureFlagOverride,
   type PourApplyInput,
   type PourApplyResult,
 } from "./repositories";

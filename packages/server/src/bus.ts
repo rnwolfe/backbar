@@ -11,7 +11,8 @@ export type LiveEvent =
   | { type: "reading.updated"; bottle_id: string; level_ml: number; source: "manual" | "weight" | "pour"; ts: number }
   | { type: "makeable.changed"; recipe_id: string; state: "makeable" | "one-away" | "unmakeable" }
   | { type: "node.status"; device_id: string; status: "online" | "offline"; last_seen: number | null }
-  | { type: "lowstock.crossed"; bottle_id: string; level_ml: number };
+  | { type: "lowstock.crossed"; bottle_id: string; level_ml: number }
+  | { type: "flag.changed"; key: string; enabled: boolean };
 
 export type Listener = (e: LiveEvent) => void;
 

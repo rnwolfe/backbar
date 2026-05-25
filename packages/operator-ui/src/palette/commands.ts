@@ -69,6 +69,7 @@ const builtins: Command[] = [
     group: "nav",
     keywords: ["fleet", "esp32", "mqtt", "nodes"],
     icon: "▩",
+    requiresFlag: "shelf",
     run: (ctx) => {
       ctx.nav("shelf");
       ctx.palette.close();
@@ -176,6 +177,7 @@ const builtins: Command[] = [
     argKind: "node",
     keywords: ["tare", "calibrate", "weight", "2-point"],
     icon: "⚙",
+    requiresFlag: "shelf",
     run: (ctx, arg) => {
       if (arg?.kind !== "node") return;
       ctx.nav("shelf");

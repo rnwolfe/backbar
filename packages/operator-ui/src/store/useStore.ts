@@ -3,6 +3,7 @@ import type { Category, Product, Recipe } from "@backbar/core";
 import {
   api,
   type BottleWithProduct,
+  type FlagRow,
   type MakeableItem,
   type NodeWithChannels,
   type PourRow,
@@ -64,6 +65,7 @@ function persistTweaks(t: Tweaks) {
 
 export interface AppStore {
   conn: ConnState;
+  flags: FlagRow[];
   categories: Category[];
   products: Product[];
   bottles: BottleWithProduct[];
@@ -89,6 +91,7 @@ type Listener = () => void;
 
 const initial: AppStore = {
   conn: "connecting",
+  flags: [],
   categories: [],
   products: [],
   bottles: [],
@@ -153,6 +156,7 @@ export const store = {
   },
   async hydrate() {
     const [
+      flags,
       categories,
       products,
       bottles,
@@ -166,6 +170,7 @@ export const store = {
       topBottles,
       telemetry,
     ] = await Promise.all([
+      api.flags().catch<FlagRow[]>(() => []),
       api.categories().catch<Category[]>(() => []),
       api.products(),
       api.bottles(),
@@ -181,6 +186,7 @@ export const store = {
     ]);
     setCategoryRegistry(categories);
     set({
+      flags,
       categories,
       products,
       bottles,
@@ -194,6 +200,14 @@ export const store = {
       topBottles,
       telemetry,
     });
+  },
+  async refreshFlags() {
+    try {
+      const flags = await api.flags();
+      set({ flags });
+    } catch {
+      // Non-blocking — Settings shows last known state until next hydrate.
+    }
   },
   async refreshCategories() {
     try {
@@ -269,6 +283,11 @@ export const store = {
         }));
         void store.refreshShopping();
         return;
+      case "flag.changed":
+        set((s) => ({
+          flags: s.flags.map((f) => (f.key === e.key ? { ...f, enabled: e.enabled, updated_at: Date.now() } : f)),
+        }));
+        return;
     }
   },
   setConn(conn: ConnState) {
@@ -280,6 +299,15 @@ export function useStore<T>(selector: (s: AppStore) => T): T {
   const sel = useRef(selector);
   sel.current = selector;
   return useSyncExternalStore(store.subscribe, () => sel.current(store.get()));
+}
+
+/**
+ * Reactive feature-flag selector. Returns true iff the flag is enabled in
+ * the current snapshot. Unknown flags read `false` (consumers should never
+ * gate on a typo'd key — it'll silently stay off).
+ */
+export function useFlag(key: string): boolean {
+  return useStore((s) => s.flags.find((f) => f.key === key)?.enabled ?? false);
 }
 
 /**

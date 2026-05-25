@@ -2,6 +2,7 @@
 // without pulling in Zod at the call site.
 export type {
   Category,
+  FeatureFlag,
   Product,
   ProductTag,
   Bottle,

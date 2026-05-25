@@ -130,6 +130,7 @@ export function TopBar({
   showFleetTicker,
   onOpenPalette,
   accentColor,
+  hiddenTabs,
 }: {
   view: ViewKey;
   onNav(v: ViewKey): void;
@@ -140,7 +141,10 @@ export function TopBar({
   showFleetTicker: boolean;
   onOpenPalette(): void;
   accentColor: string;
+  /** Tab ids to drop from the bar (e.g. shelf when the feature flag is off). */
+  hiddenTabs?: readonly ViewKey[];
 }) {
+  const visibleTabs = hiddenTabs?.length ? TABS.filter((t) => !hiddenTabs.includes(t.id)) : TABS;
   const [now, setNow] = useState<Date>(() => new Date());
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 1000);
@@ -183,7 +187,7 @@ export function TopBar({
         <div style={{ fontFamily: T.mono, color: T.inkDim, fontSize: 11 }}>v0.4.1</div>
       </div>
 
-      {TABS.map((t) => {
+      {visibleTabs.map((t) => {
         const active = t.id === view;
         return (
           <button

@@ -49,6 +49,12 @@ export function Palette({ open, onClose, onNav, onPickRecipe, onToast }: Props) 
   const recipes = useStore((s) => s.recipes);
   const makeable = useStore((s) => s.makeable);
   const nodes = useStore((s) => s.nodes);
+  const flags = useStore((s) => s.flags);
+  const enabledFlags = useMemo(() => {
+    const s = new Set<string>();
+    for (const f of flags) if (f.enabled) s.add(f.key);
+    return s;
+  }, [flags]);
 
   const [screen, setScreen] = useState<Screen>({ kind: "list" });
   const [q, setQ] = useState("");
@@ -89,7 +95,7 @@ export function Palette({ open, onClose, onNav, onPickRecipe, onToast }: Props) 
       }
     }
 
-    if (scope === "commands") return commandItems(query);
+    if (scope === "commands") return commandItems(query, enabledFlags);
     if (scope === "bottle")
       return entityItems("bottle", query, {
         products,
@@ -109,7 +115,7 @@ export function Palette({ open, onClose, onNav, onPickRecipe, onToast }: Props) 
 
     // All: commands + entities together, ranked.
     return [
-      ...commandItems(query),
+      ...commandItems(query, enabledFlags),
       ...entityItems("product", query, {
         products,
         bottles,
@@ -139,7 +145,7 @@ export function Palette({ open, onClose, onNav, onPickRecipe, onToast }: Props) 
         nodes,
       }),
     ].slice(0, 80);
-  }, [screen, q, products, bottles, recipes, makeable, nodes]);
+  }, [screen, q, products, bottles, recipes, makeable, nodes, enabledFlags]);
 
   useEffect(() => {
     setCursor(0);
@@ -352,8 +358,8 @@ export function Palette({ open, onClose, onNav, onPickRecipe, onToast }: Props) 
 
 // ─── helpers ──────────────────────────────────────────────────────────────
 
-function commandItems(q: string): Item[] {
-  const cmds = listCommands();
+function commandItems(q: string, enabledFlags: Set<string>): Item[] {
+  const cmds = listCommands().filter((c) => !c.requiresFlag || enabledFlags.has(c.requiresFlag));
   const ranked = rank([...cmds], q, (c) => [c.title, c.id, ...(c.keywords ?? [])]);
   return ranked.map(({ item: c }) => ({
     id: `cmd-${c.id}`,

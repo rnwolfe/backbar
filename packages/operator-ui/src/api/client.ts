@@ -265,7 +265,22 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+export interface FlagRow {
+  key: string;
+  label: string;
+  description: string | null;
+  default_enabled: boolean;
+  enabled: boolean;
+  updated_at: number | null;
+}
+
 export const api = {
+  flags: () => req<FlagRow[]>("/flags"),
+  patchFlag: (key: string, enabled: boolean) =>
+    req<FlagRow>(`/flags/${encodeURIComponent(key)}`, {
+      method: "PATCH",
+      body: JSON.stringify({ enabled }),
+    }),
   categories: () => req<Category[]>("/categories"),
   createCategory: (body: { id: string; label: string; hue: number; sort_order?: number }) =>
     req<Category>("/categories", { method: "POST", body: JSON.stringify(body) }),

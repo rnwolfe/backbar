@@ -21,6 +21,22 @@ export type NodeStatus = z.infer<typeof NodeStatus>;
 const Slug = z.string().regex(/^[a-z0-9][a-z0-9-]*$/, "must be kebab-case slug");
 const Id = z.string().min(1);
 
+// ─── feature flag (operator-toggleable) ──────────────────────────────────
+// Static keys defined in the server registry; this is just the row shape
+// the API exposes (overlay over registry defaults).
+export const FeatureFlag = z.object({
+  key: z.string().min(1),
+  enabled: z.coerce.boolean(),
+  /** Last toggle time (unix ms). Null when the row hasn't been overridden. */
+  updated_at: z.number().int().nullish(),
+  /** Operator-facing label + description, populated from the registry. */
+  label: z.string().min(1),
+  description: z.string().nullish(),
+  /** Default that applies when the row is missing from the DB. */
+  default_enabled: z.boolean(),
+});
+export type FeatureFlag = z.infer<typeof FeatureFlag>;
+
 // ─── category (palette registry) ─────────────────────────────────────────
 // Operators manage the category list from Settings. `product.category` is a
 // free-text slug — this registry adds a display label + hue so the Console
