@@ -300,6 +300,7 @@ export function App() {
             onClose={() => closeDetail("bottles")}
             accent={accentColor}
             onTare={(b) => setActiveTare(b)}
+            onToast={pushToast}
             onPickProduct={(productId) => openProduct(productId)}
             onEdit={(b) => {
               closeDetail("bottles");

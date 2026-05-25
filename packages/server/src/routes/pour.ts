@@ -12,6 +12,16 @@ const PourRequest = z.object({
   overrides: z.array(PourBinding).optional(),
 });
 
+/**
+ * POST /pour/custom — recipe-less pour. Used for the "log a shot" UX when
+ * the operator wants to subtract a specific ml from a single bottle without
+ * matching it to a recipe (and the resulting Pour row stores recipe_id=null).
+ */
+const CustomPourRequest = z.object({
+  bottle_id: z.string().min(1),
+  ml: z.number().positive(),
+});
+
 export function pourRouter(deps: Deps) {
   const r = new Hono();
 
@@ -74,6 +84,56 @@ export function pourRouter(deps: Deps) {
       }
     }
 
+    const { changed } = deps.makeable.recompute();
+    for (const ch of changed) deps.bus.emit({ type: "makeable.changed", ...ch });
+
+    return c.json(result.pour);
+  });
+
+  r.post("/custom", async (c) => {
+    const parsed = await parseBody(c, CustomPourRequest);
+    if (parsed.error) return parsed.response;
+
+    const bottle = bottlesRepo(deps.db).get(parsed.data.bottle_id);
+    if (!bottle) return err(c, 404, "not-found", `bottle '${parsed.data.bottle_id}'`);
+    if (parsed.data.ml > bottle.level_ml) {
+      return err(
+        c,
+        422,
+        "over-pour",
+        `pour ${parsed.data.ml}ml exceeds bottle level ${bottle.level_ml}ml`,
+      );
+    }
+
+    const wasLow = isLowStock(bottle);
+
+    let result;
+    try {
+      result = poursRepo(deps.db).apply({
+        recipe_id: null,
+        bindings: [{ bottle_id: parsed.data.bottle_id, ml: parsed.data.ml }],
+      });
+    } catch (e) {
+      return err(c, 422, "pour-failed", e instanceof Error ? e.message : String(e));
+    }
+
+    const d = result.depletions[0];
+    if (d) {
+      deps.bus.emit({
+        type: "reading.updated",
+        bottle_id: d.bottle_id,
+        level_ml: d.new_ml,
+        source: "pour",
+        ts: result.pour.made_at,
+      });
+      const bottleAfter = bottlesRepo(deps.db).get(d.bottle_id);
+      if (bottleAfter && isLowStock(bottleAfter) && !wasLow) {
+        deps.bus.emit({ type: "lowstock.crossed", bottle_id: d.bottle_id, level_ml: d.new_ml });
+      }
+    }
+
+    // A custom pour can drop a bottle to zero — recompute makeability so
+    // any recipe that relied on that bottle flips state.
     const { changed } = deps.makeable.recompute();
     for (const ch of changed) deps.bus.emit({ type: "makeable.changed", ...ch });
 

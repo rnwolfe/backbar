@@ -311,6 +311,11 @@ export const api = {
   poursTopBottles: (days = 28) => req<TopBottleRow[]>(`/pours/top-bottles?days=${days}`),
   pour: (body: { recipe_id: string; overrides?: { bottle_id: string; ml: number }[] }) =>
     req<unknown>("/pour", { method: "POST", body: JSON.stringify(body) }),
+  pourCustom: (body: { bottle_id: string; ml: number }) =>
+    req<{ id: string; recipe_id: string | null; bottles_used: { bottle_id: string; ml: number }[] }>(
+      "/pour/custom",
+      { method: "POST", body: JSON.stringify(body) },
+    ),
   ideate: (body: { brief: string; mode?: "now" | "riff"; recipe_id?: string }) =>
     req<IdeateResponse>("/ai/ideate", { method: "POST", body: JSON.stringify(body) }),
   shoppingMuse: (preview = false) =>

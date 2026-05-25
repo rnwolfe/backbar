@@ -18,6 +18,7 @@ export function BottleDetailOverlay({
   onClose,
   accent,
   onTare,
+  onToast,
   onPickProduct,
   onEdit,
   onDuplicate,
@@ -26,6 +27,7 @@ export function BottleDetailOverlay({
   onClose(): void;
   accent: string;
   onTare?(b: DecoratedBottle): void;
+  onToast?(text: string): void;
   /** Click "View product" → open ProductDetail in App. */
   onPickProduct?(productId: string): void;
   onEdit?(b: DecoratedBottle): void;
@@ -407,6 +409,23 @@ export function BottleDetailOverlay({
           )}
         </Cell>
 
+        <PourCell
+          bottle={bottle}
+          accent={accent}
+          onToast={onToast}
+          onLogged={() => {
+            // Refresh the detail (readings + stats) so the sparkline + ETA
+            // update immediately. The store-level bottle.level_ml is patched
+            // by the WS `reading.updated` event from the server.
+            api
+              .bottleDetail(bottle.id)
+              .then((d) => setDetail(d))
+              .catch(() => {
+                /* non-fatal */
+              });
+          }}
+        />
+
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 14 }}>
           <Cell
             title="CALIBRATION"
@@ -561,5 +580,157 @@ function HeaderAction({
     >
       {label}
     </button>
+  );
+}
+
+// ─── PourCell — "log a shot" / arbitrary ml deduction ─────────────────────
+const QUICK_POURS: readonly { label: string; ml: number }[] = [
+  { label: "½ oz", ml: 15 },
+  { label: "1 oz", ml: 30 },
+  { label: "1½ oz", ml: 45 },
+  { label: "2 oz", ml: 60 },
+];
+
+function PourCell({
+  bottle,
+  accent,
+  onToast,
+  onLogged,
+}: {
+  bottle: DecoratedBottle;
+  accent: string;
+  onToast?(text: string): void;
+  onLogged(): void;
+}) {
+  const [amount, setAmount] = useState<number>(30);
+  const [customStr, setCustomStr] = useState<string>("");
+  const [submitting, setSubmitting] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const effectiveMl = customStr.trim() !== "" ? Number(customStr) : amount;
+  const valid = Number.isFinite(effectiveMl) && effectiveMl > 0 && effectiveMl <= bottle.level_ml;
+
+  const submit = async () => {
+    if (!valid || submitting) return;
+    setSubmitting(true);
+    setErr(null);
+    try {
+      await api.pourCustom({ bottle_id: bottle.id, ml: effectiveMl });
+      onToast?.(`logged ${effectiveMl}ml from ${bottle.name}`);
+      setCustomStr("");
+      onLogged();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "pour failed");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Cell
+      title="POUR · MANUAL LOG"
+      right={`level ${bottle.level_ml}ml`}
+      style={{ marginTop: 14 }}
+    >
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingTop: 6 }}>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {QUICK_POURS.map((q) => {
+            const active = customStr.trim() === "" && amount === q.ml;
+            const disabled = q.ml > bottle.level_ml;
+            return (
+              <button
+                key={q.ml}
+                type="button"
+                disabled={disabled}
+                onClick={() => {
+                  setAmount(q.ml);
+                  setCustomStr("");
+                  setErr(null);
+                }}
+                style={{
+                  padding: "6px 12px",
+                  background: active ? accent : "transparent",
+                  color: active ? T.bg : disabled ? T.inkDim : T.inkMuted,
+                  border: `1px solid ${active ? accent : T.hairline2}`,
+                  fontFamily: T.mono,
+                  fontSize: 12,
+                  letterSpacing: "0.06em",
+                  cursor: disabled ? "not-allowed" : "pointer",
+                }}
+                title={disabled ? "exceeds current bottle level" : undefined}
+              >
+                {q.label} <span style={{ color: active ? T.bg : T.inkDim }}>· {q.ml}ml</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          <span style={{ fontSize: 10, color: T.inkDim, letterSpacing: "0.14em" }}>CUSTOM</span>
+          <input
+            type="number"
+            min={1}
+            max={bottle.level_ml}
+            placeholder="ml"
+            value={customStr}
+            onChange={(e) => {
+              setCustomStr(e.target.value);
+              setErr(null);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") void submit();
+            }}
+            style={{
+              width: 110,
+              boxSizing: "border-box",
+              padding: "6px 10px",
+              background: T.surface2,
+              border: `1px solid ${T.hairline2}`,
+              color: T.ink,
+              fontFamily: T.mono,
+              fontSize: 13,
+              outline: "none",
+              borderRadius: 0,
+              textAlign: "right",
+            }}
+          />
+          <span style={{ fontSize: 11, color: T.inkDim }}>ml</span>
+          <div style={{ flex: 1 }} />
+          <button
+            type="button"
+            onClick={() => void submit()}
+            disabled={!valid || submitting}
+            style={{
+              padding: "8px 14px",
+              background: !valid || submitting ? T.surface2 : accent,
+              color: !valid || submitting ? T.inkDim : T.bg,
+              border: "none",
+              fontFamily: T.mono,
+              fontSize: 12,
+              fontWeight: 600,
+              letterSpacing: "0.14em",
+              cursor: !valid || submitting ? "not-allowed" : "pointer",
+            }}
+          >
+            {submitting ? "LOGGING…" : `↧ LOG ${effectiveMl}ml`}
+          </button>
+        </div>
+
+        {err ? (
+          <div
+            style={{
+              padding: "6px 10px",
+              fontSize: 11,
+              color: T.red,
+              background: T.redGlow,
+              border: `1px solid ${T.red}`,
+              fontFamily: T.mono,
+            }}
+          >
+            ⚠ {err}
+          </div>
+        ) : null}
+      </div>
+    </Cell>
   );
 }

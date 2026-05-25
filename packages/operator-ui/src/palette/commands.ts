@@ -128,6 +128,29 @@ const builtins: Command[] = [
       ctx.palette.close();
     },
   },
+  {
+    id: "inventory.log-shot",
+    title: "Log shot (1 oz / 30 ml)",
+    group: "inventory",
+    argKind: "bottle",
+    keywords: ["pour", "shot", "manual", "custom", "subtract"],
+    icon: "↧",
+    run: async (ctx, arg) => {
+      if (arg?.kind !== "bottle") return;
+      const bottle = arg.value;
+      if (bottle.level_ml < 30) {
+        ctx.palette.toast(`only ${bottle.level_ml}ml left in ${bottle.product?.name ?? bottle.id}`);
+        return;
+      }
+      try {
+        await api.pourCustom({ bottle_id: bottle.id, ml: 30 });
+        ctx.palette.toast(`logged 30ml from ${bottle.product?.name ?? bottle.id}`);
+      } catch (e) {
+        ctx.palette.toast(e instanceof Error ? e.message : "pour failed");
+      }
+      ctx.palette.close();
+    },
+  },
 
   // ─── AI ─────────────────────────────────────────────────────────────────
   {
