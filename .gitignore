@@ -32,6 +32,11 @@ bun.lockb
 *.sqlite-shm
 *.db
 *.db-journal
+*.db-wal
+*.db-shm
+
+# generated guest menu snapshot
+packages/server/guest-menu/
 
 # platformio
 .pio/

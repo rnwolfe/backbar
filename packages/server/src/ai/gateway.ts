@@ -42,6 +42,8 @@ export function bootstrapGatewayKey(env: NodeJS.ProcessEnv = process.env): strin
 
 export const DEFAULT_MODEL = "anthropic/claude-sonnet-4";
 export const DEFAULT_VISION_MODEL = "anthropic/claude-sonnet-4";
+/** Cheap+fast model for quick factual extractions like /ai/product-lookup. */
+export const DEFAULT_LOOKUP_MODEL = "anthropic/claude-haiku-4-5";
 
 /**
  * Lazily-constructed gateway provider. Tests may pass a fake `LanguageModel`
@@ -66,4 +68,9 @@ export function getDefaultModel(): LanguageModel | null {
 export function getVisionModel(): LanguageModel | null {
   const gw = getGateway();
   return gw ? gw(DEFAULT_VISION_MODEL) : null;
+}
+
+export function getLookupModel(): LanguageModel | null {
+  const gw = getGateway();
+  return gw ? gw(DEFAULT_LOOKUP_MODEL) : null;
 }

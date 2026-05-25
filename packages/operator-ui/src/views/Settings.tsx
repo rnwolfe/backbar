@@ -1,5 +1,17 @@
+/**
+ * Settings — admin actions (reset bar / reset recipes / reseed) plus visual
+ * preferences. Visual tweaks live in the floating panel too — they sync.
+ */
 import { useState } from "react";
-import { api, type AdminResetBarResponse, type AdminResetRecipesResponse, type AdminReseedResponse } from "../api/client";
+import {
+  api,
+  type AdminResetBarResponse,
+  type AdminResetRecipesResponse,
+  type AdminReseedResponse,
+} from "../api/client";
+import { Cell, Pill, SectionHead } from "../console/Cells";
+import { PageHead } from "../console/Chrome";
+import { T, accent } from "../console/tokens";
 import { store, useStore } from "../store/useStore";
 
 type Pending = "reset-bar" | "reset-recipes" | "reseed" | null;
@@ -17,7 +29,8 @@ const ACTIONS: ActionRow[] = [
   {
     key: "reset-bar",
     title: "Reset bar",
-    blurb: "Delete every product and bottle. Recipes and historical pours stay. Sensor channels keep their device mapping but lose their bottle binding.",
+    blurb:
+      "Delete every product and bottle. Recipes and historical pours stay. Sensor channels keep their device mapping but lose their bottle binding.",
     cta: "Wipe products + bottles",
     destructive: true,
     confirmPrompt: "Delete every product and bottle? Recipes will be kept. This cannot be undone.",
@@ -25,7 +38,8 @@ const ACTIONS: ActionRow[] = [
   {
     key: "reset-recipes",
     title: "Reset recipes",
-    blurb: "Delete every recipe. The bar (products + bottles) stays. Historical pours keep their bindings; only their recipe link goes null.",
+    blurb:
+      "Delete every recipe. The bar (products + bottles) stays. Historical pours keep their bindings; only their recipe link goes null.",
     cta: "Wipe recipes",
     destructive: true,
     confirmPrompt: "Delete every recipe? The bar will be kept. This cannot be undone.",
@@ -33,7 +47,8 @@ const ACTIONS: ActionRow[] = [
   {
     key: "reseed",
     title: "Reseed starter bar",
-    blurb: "Idempotently insert the layer-1 starter products, bottles, and canon recipes. Safe to run on a populated DB — nothing already present is overwritten.",
+    blurb:
+      "Idempotently insert the layer-1 starter products, bottles, and canon recipes. Safe to run on a populated DB — nothing already present is overwritten.",
     cta: "Run seed",
     destructive: false,
     confirmPrompt: "",
@@ -41,12 +56,14 @@ const ACTIONS: ActionRow[] = [
 ];
 
 export function Settings() {
+  const tweaks = useStore((s) => s.tweaks);
   const products = useStore((s) => s.products.length);
   const bottles = useStore((s) => s.bottles.length);
   const recipes = useStore((s) => s.recipes.length);
   const [pending, setPending] = useState<Pending>(null);
   const [lastResult, setLastResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const A = accent(tweaks.accent).primary;
 
   async function run(action: ActionRow) {
     if (action.confirmPrompt && !window.confirm(action.confirmPrompt)) return;
@@ -70,44 +87,179 @@ export function Settings() {
   }
 
   return (
-    <section className="h-full overflow-y-auto">
-      <header className="flex items-center gap-2 px-3 py-2 border-b border-bg-3">
-        <h1 className="text-sm font-medium">Settings</h1>
-        <span className="text-2xs text-fg-3">
-          {products} products · {bottles} bottles · {recipes} recipes
-        </span>
-      </header>
+    <div
+      style={{
+        padding: "14px 16px",
+        overflow: "auto",
+        flex: 1,
+        display: "flex",
+        flexDirection: "column",
+        minHeight: 0,
+      }}
+    >
+      <PageHead
+        title="Settings"
+        meta={`${products} products · ${bottles} bottles · ${recipes} recipes`}
+      />
 
-      <div className="p-4 max-w-2xl flex flex-col gap-3">
-        {ACTIONS.map((a) => (
-          <div key={a.key} className="panel p-3 flex flex-col gap-2">
-            <div className="flex items-baseline justify-between gap-2">
-              <h2 className="text-sm font-medium">{a.title}</h2>
-              <button
-                type="button"
-                className={`btn ${a.destructive ? "border-danger/60 text-danger hover:bg-danger/10" : "border-accent/40 text-accent hover:bg-accent/10"}`}
-                disabled={pending !== null}
-                onClick={() => void run(a)}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, padding: "0 16px", paddingBottom: 24 }}>
+        <Cell title="ADMIN ACTIONS">
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, paddingTop: 4 }}>
+            {ACTIONS.map((a) => (
+              <div
+                key={a.key}
+                style={{
+                  padding: "12px 14px",
+                  background: T.surface2,
+                  border: `1px solid ${T.hairline}`,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                }}
               >
-                {pending === a.key ? "working…" : a.cta}
-              </button>
-            </div>
-            <p className="text-2xs text-fg-3 leading-relaxed">{a.blurb}</p>
-          </div>
-        ))}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
+                  <div style={{ fontSize: 14, color: T.ink, fontWeight: 500 }}>{a.title}</div>
+                  <Pill
+                    color={a.destructive ? T.red : A}
+                    active
+                    disabled={pending !== null}
+                    onClick={() => void run(a)}
+                  >
+                    {pending === a.key ? "WORKING…" : a.cta.toUpperCase()}
+                  </Pill>
+                </div>
+                <div style={{ fontSize: 11, color: T.inkMuted, lineHeight: 1.5 }}>{a.blurb}</div>
+              </div>
+            ))}
 
-        {lastResult ? (
-          <div className="panel p-3 text-2xs text-fg-2 font-mono whitespace-pre-wrap">
-            {lastResult}
+            {lastResult ? (
+              <div
+                style={{
+                  padding: "10px 12px",
+                  background: T.greenGlow,
+                  border: `1px solid ${T.green}`,
+                  color: T.green,
+                  fontFamily: T.mono,
+                  fontSize: 11,
+                  whiteSpace: "pre-wrap",
+                }}
+              >
+                {lastResult}
+              </div>
+            ) : null}
+            {error ? (
+              <div
+                style={{
+                  padding: "10px 12px",
+                  background: T.redGlow,
+                  border: `1px solid ${T.red}`,
+                  color: T.red,
+                  fontFamily: T.mono,
+                  fontSize: 11,
+                  whiteSpace: "pre-wrap",
+                }}
+              >
+                {error}
+              </div>
+            ) : null}
           </div>
-        ) : null}
-        {error ? (
-          <div className="panel p-3 text-2xs text-danger font-mono whitespace-pre-wrap border-danger/40">
-            {error}
+        </Cell>
+
+        <Cell title="APPEARANCE" right="synced with TWEAKS panel">
+          <div style={{ display: "flex", flexDirection: "column", gap: 14, paddingTop: 4 }}>
+            <SettingRadio
+              label="Accent color"
+              value={tweaks.accent}
+              options={["cyan", "amber", "green"] as const}
+              onChange={(v) => store.setTweak("accent", v)}
+            />
+            <SettingRadio
+              label="Default bottle view"
+              value={tweaks.defaultBottleView}
+              options={["grid", "ribbon", "list"] as const}
+              onChange={(v) => store.setTweak("defaultBottleView", v)}
+            />
+            <SettingRadio
+              label="Density"
+              value={tweaks.density}
+              options={["compact", "regular", "comfy"] as const}
+              onChange={(v) => store.setTweak("density", v)}
+            />
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontSize: 11, color: T.inkMuted, letterSpacing: "0.08em", flex: 1 }}>
+                Show fleet ticker in topbar
+              </span>
+              <Pill
+                color={A}
+                active={tweaks.showFleetTickerInTopBar}
+                onClick={() => store.setTweak("showFleetTickerInTopBar", !tweaks.showFleetTickerInTopBar)}
+              >
+                {tweaks.showFleetTickerInTopBar ? "ON" : "OFF"}
+              </Pill>
+            </div>
           </div>
-        ) : null}
+        </Cell>
       </div>
-    </section>
+
+      <SectionHead>ABOUT</SectionHead>
+      <div
+        style={{
+          padding: "12px 16px",
+          fontFamily: T.mono,
+          fontSize: 11,
+          color: T.inkMuted,
+          lineHeight: 1.7,
+        }}
+      >
+        Backbar v0.4.1 — local-first home-bar OS. inventory · weight-based depletion · recipes · AI mixology.
+        <br />
+        <span style={{ color: T.inkDim }}>spec: backbar-architecture-spec.md · build target: bun + react + sqlite</span>
+      </div>
+    </div>
+  );
+}
+
+function SettingRadio<V extends string>({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: V;
+  options: readonly V[];
+  onChange(v: V): void;
+}) {
+  return (
+    <div>
+      <div style={{ fontSize: 10, letterSpacing: "0.14em", color: T.inkMuted, marginBottom: 6 }}>
+        {label.toUpperCase()}
+      </div>
+      <div style={{ display: "flex", border: `1px solid ${T.hairline2}` }}>
+        {options.map((opt, i) => (
+          <button
+            key={opt}
+            type="button"
+            onClick={() => onChange(opt)}
+            style={{
+              flex: 1,
+              padding: "7px 0",
+              background: opt === value ? T.cyanGlow : "transparent",
+              color: opt === value ? T.ink : T.inkMuted,
+              fontFamily: T.mono,
+              fontSize: 11,
+              letterSpacing: "0.08em",
+              border: "none",
+              borderRight: i < options.length - 1 ? `1px solid ${T.hairline2}` : "none",
+              cursor: "pointer",
+              textTransform: "uppercase",
+            }}
+          >
+            {opt}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 

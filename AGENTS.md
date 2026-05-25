@@ -12,12 +12,14 @@ Agent router for the Backbar monorepo. Read this first, then the linked detail f
 |---|---|---|
 | domain types, makeability, balance/dilution math, unit/density conversion | `specs/data-model.md`, this §Conventions | `packages/core` |
 | schema, migrations, repositories, canon seed | `specs/data-model.md` | `packages/db` |
+| product↔bottle relationship; richer metadata (distillery, origin, tags) | `specs/inventory-model.md` | `packages/db` + `packages/core` |
 | HTTP API, WebSocket, ingest core, MQTT adapter | `specs/api.md` | `packages/server` |
 | AI ideate / shopping muse / recipe-photo import | `specs/ai-engine.md` | `packages/server/ai` |
 | operator console (dense dark) | `specs/ui-operator.md`, seed: `operator-ui-seed.jsx` | `packages/operator-ui` |
 | command palette / global search (⌘K) | spec §5.1, `specs/api.md` (optional `/search`) | `packages/operator-ui` (command registry + client fuzzy) |
 | guest menu (snapshot + Caddy) | `specs/ui-guest.md` | `packages/guest-ui` |
 | ESP32 firmware, calibration, settle detection | `specs/firmware.md`, `specs/calibration.md` | `packages/firmware` |
+| physical hardware build — BOM, wiring, mounting, housing | `specs/hardware.md` | `packages/firmware/hardware/` (STLs) + ops |
 | VA ABC procurement lookup | `specs/integrations.md` + spec §10 | `packages/server/integrations/va-abc` |
 
 *(Detail files under `specs/` are written on demand — if a referenced file doesn't exist yet, generate it from the matching spec section before implementing.)*
@@ -33,12 +35,14 @@ backbar/
   specs/
     backbar-architecture-spec.md  # AUTHORITATIVE source of truth
     data-model.md                 # schema + zod + makeability detail
+    inventory-model.md            # product↔bottle conceptual model + tags proposal
     api.md                        # endpoint contracts, WS events, ingest core
     ai-engine.md                  # prompts, output schema, repair loop, modes
     ui-operator.md                # console IA + design tokens (see seed)
     ui-guest.md                   # menu IA + publish/Caddy
     firmware.md                   # node topology, MQTT topics, settle detection
     calibration.md                # 2-point cal + tare procedure
+    hardware.md                   # physical build — BOM, wiring, mounts, housing
     integrations.md               # ProcurementSource + va-abc CONTRACT
   .env.example                  # AI_GATEWAY_API_KEY, MQTT_URL, WEBHOOK_*, HMAC_SECRET
   package.json                  # bun workspaces

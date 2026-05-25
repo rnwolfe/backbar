@@ -7,6 +7,7 @@ import {
 } from "@backbar/core";
 import {
   bottles as bottlesRepo,
+  productTags as productTagsRepo,
   products as productsRepo,
   recipes as recipesRepo,
   type DB,
@@ -33,11 +34,20 @@ export interface MakeableItem extends Result {
  */
 export function loadInventory(db: DB): InvBottle[] {
   const productMap = new Map(productsRepo(db).list().map((p) => [p.id, p] as const));
+  // Build per-product tag arrays once; the matcher consults these for
+  // namespaced tag refs (`tag:smugglers-cove:column-still-rum` etc.) per
+  // specs/inventory-model.md §3b.
+  const tagsByProduct = new Map<string, ReturnType<typeof productTagsRepo>["list"] extends () => Array<infer T> ? T[] : never>();
+  for (const t of productTagsRepo(db).list()) {
+    const list = tagsByProduct.get(t.product_id) ?? [];
+    list.push(t);
+    tagsByProduct.set(t.product_id, list);
+  }
   const inv: InvBottle[] = [];
   for (const b of bottlesRepo(db).list()) {
     const product = productMap.get(b.product_id);
     if (!product) continue;
-    inv.push({ ...b, product });
+    inv.push({ ...b, product, tags: tagsByProduct.get(b.product_id) ?? [] });
   }
   return inv;
 }

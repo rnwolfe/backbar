@@ -2,6 +2,7 @@ import type { DB } from "@backbar/db";
 import { Bus } from "./bus";
 import { MakeableCache } from "./makeable";
 import type { ConfigPayload } from "./mqtt";
+import { RawSampleCache } from "./rawSampleCache";
 
 /**
  * Shared per-process dependencies. Built once at server start, passed into
@@ -28,6 +29,8 @@ export interface Deps {
   db: DB;
   bus: Bus;
   makeable: MakeableCache;
+  /** Latest raw sample per (device_id, channel) — feeds the calibration UI. */
+  rawSamples: RawSampleCache;
   /** Required for `/ingest/reading` (HMAC); when absent the route 503s. */
   hmacSecret: string | null;
   /** Where `/menu/publish` writes the snapshot. Kept on Deps for back-compat
@@ -45,12 +48,14 @@ export function buildDeps(db: DB, env: NodeJS.ProcessEnv = process.env): Deps {
   const bus = new Bus();
   const makeable = new MakeableCache(db);
   makeable.recompute();
+  const rawSamples = new RawSampleCache();
   const outDir = env.GUEST_MENU_OUT_DIR ?? "./guest-menu";
   const mode: MenuServeMode = env.MENU_SERVE_MODE === "caddy" ? "caddy" : "snapshot";
   return {
     db,
     bus,
     makeable,
+    rawSamples,
     hmacSecret: env.HMAC_SECRET ?? null,
     guestMenuOutDir: outDir,
     guestMenu: {

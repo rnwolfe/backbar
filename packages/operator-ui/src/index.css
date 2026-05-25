@@ -10,17 +10,34 @@
   body,
   #root {
     height: 100%;
+    overflow: hidden;
+  }
+  html,
+  body {
+    background: #0a0c0f;
+    color: #dbe2ec;
+    font-family: "Geist", system-ui, sans-serif;
+    margin: 0;
+    padding: 0;
+  }
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
   }
   body {
     font-feature-settings: "tnum" 1, "cv11" 1;
+  }
+  ::selection {
+    background: #4ddae8;
+    color: #0a0c0f;
   }
   ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
   }
   ::-webkit-scrollbar-thumb {
-    background: #242b34;
-    border-radius: 4px;
+    background: #262f3c;
   }
   ::-webkit-scrollbar-track {
     background: transparent;
@@ -28,25 +45,26 @@
 }
 
 @layer components {
+  /* Legacy helpers retained so any not-yet-restyled view still renders */
   .row {
-    @apply flex items-center gap-2 px-3 py-1.5 border-b border-bg-3/60;
+    @apply flex items-center gap-2 px-3 py-1.5 border-b border-hairline;
   }
   .row-hover {
-    @apply hover:bg-bg-2;
+    @apply hover:bg-surface-2;
   }
   .pill {
-    @apply inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-2xs uppercase tracking-wide border border-bg-4/80 text-fg-2;
+    @apply inline-flex items-center gap-1 px-1.5 py-0.5 text-2xs uppercase tracking-wide border border-hairline-2 text-ink-muted;
   }
   .kbd {
-    @apply font-mono text-2xs px-1.5 py-0.5 rounded border border-bg-4 bg-bg-3 text-fg-2;
+    @apply font-mono text-2xs px-1.5 py-0.5 border border-hairline-2 bg-surface-2 text-ink-muted;
   }
   .input {
-    @apply bg-bg-2 border border-bg-3 rounded px-2 py-1 text-sm text-fg placeholder:text-fg-3 focus:outline-none focus:border-accent;
+    @apply bg-surface-2 border border-hairline-2 px-2 py-1 text-sm text-ink placeholder:text-ink-dim focus:outline-none focus:border-cyan;
   }
   .btn {
-    @apply inline-flex items-center gap-1 rounded border border-bg-4 bg-bg-2 px-2 py-1 text-xs text-fg hover:bg-bg-3 disabled:opacity-50;
+    @apply inline-flex items-center gap-1 border border-hairline-2 bg-surface-2 px-2 py-1 text-xs text-ink hover:bg-surface-3 disabled:opacity-50;
   }
   .panel {
-    @apply bg-bg-2 border border-bg-3 rounded;
+    @apply bg-surface border border-hairline;
   }
 }

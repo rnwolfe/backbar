@@ -138,9 +138,11 @@ function resolveWeight(
   const product = productsRepo(db).get(bottle.product_id);
   if (!product) throw new IngestError(`bottle has no product: ${bottle.id}`, "no-product");
 
-  const slope = channel.cal_slope ?? 1;
-  const offset = channel.cal_offset ?? 0;
-  const grossG = input.raw_g * slope + offset;
+  // Per spec/calibration.md §2 the node applies cal locally — `raw_g` is
+  // already-calibrated gross grams. Server's job is tare subtraction + density.
+  // (Previously this multiplied by slope/offset again; that double-application
+  // silently inflated all reported levels by the channel's cal factor.)
+  const grossG = input.raw_g;
   const netG = grossG - (bottle.tare_g ?? 0);
   const d = density(product);
   if (d <= 0) throw new IngestError(`invalid density for product ${product.id}`, "invalid-density");

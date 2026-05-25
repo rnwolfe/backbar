@@ -4,6 +4,7 @@ import {
   Node,
   Pour,
   Product,
+  ProductTag,
   Reading,
   Recipe,
   RecipeIngredient,
@@ -32,6 +33,12 @@ interface ProductRow {
   default_ml: number | null;
   flavor_tags: string;
   notes: string | null;
+  // §3a structured metadata
+  distillery: string | null;
+  origin_country: string | null;
+  origin_region: string | null;
+  producer_url: string | null;
+  age_statement_y: number | null;
 }
 
 function productFromRow(r: ProductRow): Product {
@@ -45,6 +52,11 @@ function productFromRow(r: ProductRow): Product {
     default_ml: r.default_ml,
     flavor_tags: parseJson<string[]>(r.flavor_tags, []),
     notes: r.notes,
+    distillery: r.distillery,
+    origin_country: r.origin_country,
+    origin_region: r.origin_region,
+    producer_url: r.producer_url,
+    age_statement_y: r.age_statement_y,
   });
 }
 
@@ -66,8 +78,9 @@ export const products = (db: DB) => ({
     const parsed = Product.parse(p);
     db.run(
       `INSERT INTO product
-       (id, name, category, subcategory, abv, density_g_ml, default_ml, flavor_tags, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (id, name, category, subcategory, abv, density_g_ml, default_ml, flavor_tags, notes,
+        distillery, origin_country, origin_region, producer_url, age_statement_y)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         parsed.id,
         parsed.name,
@@ -78,6 +91,11 @@ export const products = (db: DB) => ({
         parsed.default_ml ?? null,
         json(parsed.flavor_tags),
         parsed.notes ?? null,
+        parsed.distillery ?? null,
+        parsed.origin_country ?? null,
+        parsed.origin_region ?? null,
+        parsed.producer_url ?? null,
+        parsed.age_statement_y ?? null,
       ],
     );
     return parsed;
@@ -95,6 +113,79 @@ export const products = (db: DB) => ({
       .query<ProductRow, []>("SELECT * FROM product ORDER BY name")
       .all()
       .map(productFromRow);
+  },
+});
+
+// ─── product_tag (§3b namespaced taxonomy) ──────────────────────────────
+interface ProductTagRow {
+  product_id: string;
+  namespace: string;
+  value: string;
+}
+
+function productTagFromRow(r: ProductTagRow): ProductTag {
+  return ProductTag.parse({
+    product_id: r.product_id,
+    namespace: r.namespace,
+    value: r.value,
+  });
+}
+
+export const productTags = (db: DB) => ({
+  /** Upsert is implicit — primary key is (product_id, namespace, value). */
+  add(t: ProductTag): ProductTag {
+    const parsed = ProductTag.parse(t);
+    db.run(
+      `INSERT OR IGNORE INTO product_tag (product_id, namespace, value) VALUES (?, ?, ?)`,
+      [parsed.product_id, parsed.namespace, parsed.value],
+    );
+    return parsed;
+  },
+
+  remove(product_id: string, namespace: string, value: string): void {
+    db.run("DELETE FROM product_tag WHERE product_id = ? AND namespace = ? AND value = ?", [
+      product_id,
+      namespace,
+      value,
+    ]);
+  },
+
+  /** Wipe all tags for a product — used when replacing a product's tag set wholesale. */
+  removeAllFor(product_id: string): number {
+    const before = db
+      .query<{ c: number }, [string]>("SELECT COUNT(*) AS c FROM product_tag WHERE product_id = ?")
+      .get(product_id)!.c;
+    db.run("DELETE FROM product_tag WHERE product_id = ?", [product_id]);
+    return before;
+  },
+
+  forProduct(product_id: string): ProductTag[] {
+    return db
+      .query<ProductTagRow, [string]>(
+        "SELECT * FROM product_tag WHERE product_id = ? ORDER BY namespace, value",
+      )
+      .all(product_id)
+      .map(productTagFromRow);
+  },
+
+  /** All tags across the catalog — for the makeability matcher join. */
+  list(): ProductTag[] {
+    return db
+      .query<ProductTagRow, []>(
+        "SELECT * FROM product_tag ORDER BY product_id, namespace, value",
+      )
+      .all()
+      .map(productTagFromRow);
+  },
+
+  /** Distinct namespaces present in the catalog (for UI filters). */
+  namespaces(): string[] {
+    return db
+      .query<{ namespace: string }, []>(
+        "SELECT DISTINCT namespace FROM product_tag ORDER BY namespace",
+      )
+      .all()
+      .map((r) => r.namespace);
   },
 });
 

@@ -1,21 +1,64 @@
 import { useEffect, useRef, useSyncExternalStore } from "react";
-import type { Node as NodeRow, Product, Recipe } from "@backbar/core";
+import type { Product, Recipe } from "@backbar/core";
 import {
   api,
   type BottleWithProduct,
   type MakeableItem,
+  type NodeWithChannels,
+  type PourRow,
+  type PourSummaryDay,
   type ShoppingList,
+  type Telemetry,
+  type TopBottleRow,
+  type TopRecipeRow,
 } from "../api/client";
 import { connectLive, type ConnState, type LiveEvent } from "../api/ws";
 
 export type ViewKey =
-  | "makeability"
-  | "catalog"
+  | "dash"
   | "bottles"
+  | "catalog"
   | "recipes"
-  | "shopping"
-  | "nodes"
+  | "pours"
+  | "shelf"
+  | "menu"
   | "settings";
+
+export interface Tweaks {
+  accent: "cyan" | "amber" | "green";
+  defaultBottleView: "grid" | "ribbon" | "list";
+  showFleetTickerInTopBar: boolean;
+  density: "compact" | "regular" | "comfy";
+}
+
+const TWEAKS_DEFAULTS: Tweaks = {
+  accent: "cyan",
+  defaultBottleView: "grid",
+  showFleetTickerInTopBar: true,
+  density: "regular",
+};
+
+const TWEAKS_KEY = "backbar.tweaks.v1";
+
+function loadTweaks(): Tweaks {
+  if (typeof localStorage === "undefined") return TWEAKS_DEFAULTS;
+  try {
+    const raw = localStorage.getItem(TWEAKS_KEY);
+    if (!raw) return TWEAKS_DEFAULTS;
+    return { ...TWEAKS_DEFAULTS, ...(JSON.parse(raw) as Partial<Tweaks>) };
+  } catch {
+    return TWEAKS_DEFAULTS;
+  }
+}
+
+function persistTweaks(t: Tweaks) {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem(TWEAKS_KEY, JSON.stringify(t));
+  } catch {
+    // localStorage may be full / disabled — non-fatal.
+  }
+}
 
 export interface AppStore {
   view: ViewKey;
@@ -24,8 +67,18 @@ export interface AppStore {
   bottles: BottleWithProduct[];
   recipes: Recipe[];
   makeable: MakeableItem[];
-  nodes: NodeRow[];
+  nodes: NodeWithChannels[];
   shopping: ShoppingList;
+  pours: PourRow[];
+  poursSummary: PourSummaryDay[];
+  topRecipes: TopRecipeRow[];
+  topBottles: TopBottleRow[];
+  telemetry: Telemetry | null;
+  tweaks: Tweaks;
+  /** Set when the operator navigates from Catalog → Bottles for a specific
+   *  product; the Bottles view reads it as a one-shot filter and the store
+   *  clears it as soon as the view honors it. */
+  bottlesFilter: { product_id: string } | null;
   /** Lightweight log of recent lowstock events; surfaced as toasts later. */
   notices: { id: string; kind: "lowstock" | "info"; text: string; ts: number }[];
 }
@@ -33,7 +86,7 @@ export interface AppStore {
 type Listener = () => void;
 
 const initial: AppStore = {
-  view: "makeability",
+  view: "bottles",
   conn: "connecting",
   products: [],
   bottles: [],
@@ -41,11 +94,29 @@ const initial: AppStore = {
   makeable: [],
   nodes: [],
   shopping: { low: [], muse: [] },
+  pours: [],
+  poursSummary: [],
+  topRecipes: [],
+  topBottles: [],
+  telemetry: null,
+  tweaks: loadTweaks(),
+  bottlesFilter: null,
   notices: [],
 };
 
 let state: AppStore = initial;
 const listeners = new Set<Listener>();
+
+// Coalesce pour-driven refreshes so a fast burst of `reading.updated` events
+// triggers exactly one /pours+/telemetry roundtrip.
+let pourRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+function schedulePourRefresh() {
+  if (pourRefreshTimer) clearTimeout(pourRefreshTimer);
+  pourRefreshTimer = setTimeout(() => {
+    pourRefreshTimer = null;
+    void store.refreshPourAnalytics();
+  }, 600);
+}
 
 function emit() {
   for (const l of listeners) l();
@@ -68,16 +139,56 @@ export const store = {
   setView(view: ViewKey) {
     set({ view });
   },
+  filterBottlesByProduct(product_id: string) {
+    set({ view: "bottles", bottlesFilter: { product_id } });
+  },
+  clearBottlesFilter() {
+    set({ bottlesFilter: null });
+  },
+  setTweak<K extends keyof Tweaks>(key: K, value: Tweaks[K]) {
+    const next = { ...state.tweaks, [key]: value };
+    persistTweaks(next);
+    set({ tweaks: next });
+  },
   async hydrate() {
-    const [products, bottles, recipes, makeable, nodes, shopping] = await Promise.all([
+    const [
+      products,
+      bottles,
+      recipes,
+      makeable,
+      nodes,
+      shopping,
+      pours,
+      poursSummary,
+      topRecipes,
+      topBottles,
+      telemetry,
+    ] = await Promise.all([
       api.products(),
       api.bottles(),
       api.recipes(),
       api.makeable(),
       api.nodes(),
       api.shopping(),
+      api.pours({ limit: 50 }).catch<PourRow[]>(() => []),
+      api.poursSummary(28).catch<PourSummaryDay[]>(() => []),
+      api.poursTopRecipes(28).catch<TopRecipeRow[]>(() => []),
+      api.poursTopBottles(28).catch<TopBottleRow[]>(() => []),
+      api.telemetry().catch<Telemetry | null>(() => null),
     ]);
-    set({ products, bottles, recipes, makeable, nodes, shopping });
+    set({
+      products,
+      bottles,
+      recipes,
+      makeable,
+      nodes,
+      shopping,
+      pours,
+      poursSummary,
+      topRecipes,
+      topBottles,
+      telemetry,
+    });
   },
   async refreshShopping() {
     try {
@@ -85,6 +196,20 @@ export const store = {
       set({ shopping });
     } catch {
       // Non-blocking — next WS event will trigger another attempt.
+    }
+  },
+  async refreshPourAnalytics() {
+    try {
+      const [pours, poursSummary, topRecipes, topBottles, telemetry] = await Promise.all([
+        api.pours({ limit: 50 }),
+        api.poursSummary(28),
+        api.poursTopRecipes(28),
+        api.poursTopBottles(28),
+        api.telemetry(),
+      ]);
+      set({ pours, poursSummary, topRecipes, topBottles, telemetry });
+    } catch {
+      // Non-blocking — the next pour event will trigger another attempt.
     }
   },
   applyEvent(e: LiveEvent) {
@@ -97,6 +222,8 @@ export const store = {
             b.id === e.bottle_id ? { ...b, level_ml: e.level_ml } : b,
           ),
         }));
+        // Pour readings move analytics — schedule a coalesced refresh.
+        if (e.source === "pour") schedulePourRefresh();
         return;
       case "makeable.changed":
         set((s) => ({

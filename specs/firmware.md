@@ -1,8 +1,14 @@
 # specs/firmware.md
 
-Detail for `packages/firmware` — ESP32-S3 fleet node. Parent: `backbar-architecture-spec.md` §4 + `api.md` §3.
+Detail for `packages/firmware` — fleet node firmware (Arduino Uno R4 WiFi *or* ESP32-S3). Parent: `backbar-architecture-spec.md` §4 + `api.md` §3. Companion docs: `hardware.md` (physical build — BOM, wiring, mounts, housing) and `calibration.md` (cal + tare flow).
 
 **Scope (P2a — one node):** prove HX711 → settle → MQTT publish + birth/LWT + config sync end-to-end on a single board. Fleet scale-out (P2b) is the same firmware on N boards; topology is the broker, not the code.
+
+**Supported board targets** (both ship in `platformio.ini`):
+- **Arduino Uno R4 WiFi** (default; Renesas RA4M1 + onboard ESP32-S3 Wi-Fi co-pro). Persistence: on-chip EEPROM. WiFi lib: `WiFiS3`.
+- **ESP32-S3 DevKitC-1**. Persistence: NVS via `Preferences`. WiFi lib: `WiFi`.
+
+The two paths differ only in WiFi headers + cal-persistence storage; the settle loop, MQTT plumbing, and channel abstraction are shared. Pin maps and platform diffs live in `main.cpp` behind `BACKBAR_BOARD_*` build flags. Per-board pin tables live in `hardware.md` §2.
 
 ---
 
@@ -93,12 +99,15 @@ The server *also* coalesces `reading.updated` bursts on a 250 ms window (`packag
 ```bash
 cd packages/firmware
 # Configure broker + credentials in src/secrets.h (gitignored — see secrets.h.example)
-pio run                          # build
-pio run -t upload                # flash via USB
-pio device monitor               # serial @ 115200
+pio run                                       # build default env (uno_r4_wifi)
+pio run -e esp32-s3-devkitc-1                 # build the ESP32 target instead
+pio run -t upload                             # flash default env via USB
+pio device monitor                            # serial @ 115200
 ```
 
-`platformio.ini` pins `bogde/HX711`, `knolleary/PubSubClient`, and `bblanchon/ArduinoJson`. PlatformIO is *not* required for the server tests — the firmware is shipped as source.
+`platformio.ini` pins `bogde/HX711`, `knolleary/PubSubClient`, and `bblanchon/ArduinoJson` across both envs. PlatformIO is *not* required for the server tests — the firmware is shipped as source.
+
+See `hardware.md` §7 for the full kit→first-reading checklist that walks from cell wiring through cal/tare in the Console.
 
 ---
 

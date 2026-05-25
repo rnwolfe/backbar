@@ -8,10 +8,12 @@ import { makeableRouter } from "./routes/makeable";
 import { menuRouter } from "./routes/menu";
 import { nodesRouter } from "./routes/nodes";
 import { pourRouter } from "./routes/pour";
+import { poursRouter } from "./routes/pours";
 import { productsRouter } from "./routes/products";
 import { readingsRouter } from "./routes/readings";
 import { recipesRouter } from "./routes/recipes";
 import { shoppingRouter } from "./routes/shopping";
+import { telemetryRouter } from "./routes/telemetry";
 
 /**
  * Build the Hono app from injected deps. The function-of-deps shape lets
@@ -40,7 +42,9 @@ export function buildApp(deps: Deps) {
   app.route("/makeable", makeableRouter(deps));
   app.route("/nodes", nodesRouter(deps));
   app.route("/pour", pourRouter(deps));
+  app.route("/pours", poursRouter(deps));
   app.route("/shopping-list", shoppingRouter(deps));
+  app.route("/telemetry", telemetryRouter(deps));
   app.route("/ai", aiRouter(deps, { hasGateway }));
   app.route("/admin", adminRouter(deps));
   app.route("/guest", menuRouter(deps)); // exposes /guest/menu + /guest/menu/publish

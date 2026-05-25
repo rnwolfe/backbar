@@ -1,4 +1,4 @@
-// Backbar fleet node — ESP32-S3.
+// Backbar fleet node — ESP32-S3 OR Arduino Uno R4 WiFi.
 //
 // Spec: ../../specs/firmware.md + backbar-architecture-spec.md §4.
 //
@@ -14,24 +14,54 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <HX711.h>
-#include <Preferences.h>
 #include <PubSubClient.h>
-#include <WiFi.h>
 
 #include "secrets.h"  // defines WIFI_SSID, WIFI_PASS, MQTT_HOST, MQTT_PORT, DEVICE_ID, FW_VERSION
 
-// ─── Channel wiring (single-board P2a — HX711 per cell). ───────────────────
-// Each row: { DOUT pin, SCK pin }. ESP32-S3 free GPIOs vary by board; adjust.
+// ─── Platform shims ────────────────────────────────────────────────────────
+// WiFi library and on-board cal persistence differ between the ESP32-S3 and
+// the Uno R4 WiFi. Everything below this block is shared.
+#if defined(BACKBAR_BOARD_UNO_R4) || defined(ARDUINO_ARCH_RENESAS)
+  #include <EEPROM.h>
+  #include <WiFiS3.h>
+  #define BACKBAR_PLATFORM_NAME "uno-r4-wifi"
+  // RA4M1 has 8 KB of on-chip EEPROM; we use the first 64 bytes (8 floats
+  // × 4 channels = 32 bytes, room to grow). 0xFF means "never written".
+  static constexpr int CAL_EEPROM_BASE = 0;
+#elif defined(BACKBAR_BOARD_ESP32) || defined(ARDUINO_ARCH_ESP32)
+  #include <Preferences.h>
+  #include <WiFi.h>
+  #define BACKBAR_PLATFORM_NAME "esp32-s3"
+#else
+  #error "Unsupported board — add a BACKBAR_BOARD_* build_flag or ARDUINO_ARCH guard."
+#endif
+
+// ─── Channel wiring (per board). ───────────────────────────────────────────
 struct ChannelPins {
   uint8_t dout;
   uint8_t sck;
 };
+
+#if defined(BACKBAR_BOARD_UNO_R4) || defined(ARDUINO_ARCH_RENESAS)
+// Uno R4 WiFi — D0/D1 are USB serial; D10–D13 reserved for SPI/LED; the
+// onboard 12×8 LED matrix uses non-pin internal lines. D2–D9 are clean.
+static const ChannelPins CHANNEL_PINS[] = {
+    {2, 3},
+    {4, 5},
+    {6, 7},
+    {8, 9},
+};
+#else
+// ESP32-S3 DevKitC-1 — free GPIOs vary by board variant; adjust if your
+// board exposes a different mapping.
 static const ChannelPins CHANNEL_PINS[] = {
     {4, 5},
     {6, 7},
     {15, 16},
     {17, 18},
 };
+#endif
+
 constexpr size_t CHANNEL_COUNT = sizeof(CHANNEL_PINS) / sizeof(CHANNEL_PINS[0]);
 
 // ─── Settle detection (see specs/firmware.md §4). ──────────────────────────
@@ -46,7 +76,7 @@ constexpr size_t SETTLE_WINDOW_SAMPLES =
 struct ChannelState {
   HX711 scale;
   float cal_slope = 1.0f;   // pushed from server via `config` topic
-  float cal_offset = 0.0f;  // (and persisted to NVS for cold-boot)
+  float cal_offset = 0.0f;  // (and persisted to on-board storage for cold-boot)
   float ring[SETTLE_WINDOW_SAMPLES] = {};
   size_t ring_idx = 0;
   size_t ring_filled = 0;
@@ -58,7 +88,10 @@ static uint32_t heartbeat_s = HEARTBEAT_S_DEFAULT;
 
 WiFiClient wifi;
 PubSubClient mqtt(wifi);
+
+#if defined(BACKBAR_BOARD_ESP32) || defined(ARDUINO_ARCH_ESP32)
 Preferences prefs;
+#endif
 
 // ─── Topic helpers. ────────────────────────────────────────────────────────
 static String topicReading;
@@ -73,9 +106,42 @@ static void buildTopics() {
   topicConfig = String("backbar/") + DEVICE_ID + "/config";
 }
 
-// ─── NVS persistence for calibration. ──────────────────────────────────────
-// Layout: keys "s<channel>" = slope (float), "o<channel>" = offset (float).
-static void loadCalFromNvs() {
+// ─── Persistent calibration (platform-specific). ───────────────────────────
+// Layout: per channel, store {magic:u32 = 0xCA1B0001, slope:f32, offset:f32}.
+// Magic guards against reading an unwritten EEPROM region (all 0xFF) as a
+// valid cal — on first boot we want defaults (1.0 / 0.0), not garbage.
+#if defined(BACKBAR_BOARD_UNO_R4) || defined(ARDUINO_ARCH_RENESAS)
+
+struct CalRecord {
+  uint32_t magic;
+  float slope;
+  float offset;
+};
+static constexpr uint32_t CAL_MAGIC = 0xCA1B0001UL;
+static constexpr size_t CAL_RECORD_BYTES = sizeof(CalRecord);
+
+static void loadCalFromStorage() {
+  for (size_t i = 0; i < CHANNEL_COUNT; i++) {
+    CalRecord rec{};
+    EEPROM.get(CAL_EEPROM_BASE + i * CAL_RECORD_BYTES, rec);
+    if (rec.magic == CAL_MAGIC) {
+      channels[i].cal_slope = rec.slope;
+      channels[i].cal_offset = rec.offset;
+    } else {
+      channels[i].cal_slope = 1.0f;
+      channels[i].cal_offset = 0.0f;
+    }
+  }
+}
+
+static void saveCalToStorage(size_t i, float slope, float offset) {
+  CalRecord rec{CAL_MAGIC, slope, offset};
+  EEPROM.put(CAL_EEPROM_BASE + i * CAL_RECORD_BYTES, rec);
+}
+
+#else
+
+static void loadCalFromStorage() {
   prefs.begin("backbar", true);
   for (size_t i = 0; i < CHANNEL_COUNT; i++) {
     char ks[8];
@@ -88,7 +154,7 @@ static void loadCalFromNvs() {
   prefs.end();
 }
 
-static void saveCalToNvs(size_t i, float slope, float offset) {
+static void saveCalToStorage(size_t i, float slope, float offset) {
   prefs.begin("backbar", false);
   char ks[8];
   char ko[8];
@@ -98,6 +164,8 @@ static void saveCalToNvs(size_t i, float slope, float offset) {
   prefs.putFloat(ko, offset);
   prefs.end();
 }
+
+#endif
 
 // ─── HX711 read + cal application. ─────────────────────────────────────────
 static bool readChannelGrams(size_t i, float& grams_out) {
@@ -129,9 +197,9 @@ static bool feedAndCheckSettle(ChannelState& ch, float grams, float& settled_g_o
   return true;
 }
 
-// ─── MQTT publish — JSON payload server expects (ReadingPayload). ──────────
-// Server parses `{channel, raw_g, ts}` with ts in ms-since-epoch (or any
-// monotonic stamp; server falls back to Date.now() if ts is omitted).
+// ─── MQTT publish — JSON payload the server's ReadingPayload Zod accepts. ──
+// `raw_g` carries node-applied cal'd gross grams (spec/calibration.md §2);
+// in identity-cal mode (slope=1, offset=0) it carries literal HX711 counts.
 static void publishReading(size_t channel, float grams, uint32_t ts_ms) {
   if (!mqtt.connected()) return;
   StaticJsonDocument<128> doc;
@@ -146,6 +214,7 @@ static void publishReading(size_t channel, float grams, uint32_t ts_ms) {
 static void publishBirth() {
   StaticJsonDocument<96> doc;
   doc["fw_version"] = FW_VERSION;
+  doc["platform"] = BACKBAR_PLATFORM_NAME;
   char buf[96];
   size_t n = serializeJson(doc, buf, sizeof(buf));
   mqtt.publish(topicBirth.c_str(), reinterpret_cast<const uint8_t*>(buf), n, /*retain=*/true);
@@ -156,7 +225,8 @@ static void onConfigMessage(byte* payload, unsigned int length) {
   StaticJsonDocument<512> doc;
   DeserializationError err = deserializeJson(doc, payload, length);
   if (err) {
-    Serial.printf("[mqtt] bad config payload: %s\n", err.c_str());
+    Serial.print("[mqtt] bad config payload: ");
+    Serial.println(err.c_str());
     return;
   }
   if (doc["cadence_s"].is<uint32_t>()) {
@@ -170,9 +240,13 @@ static void onConfigMessage(byte* payload, unsigned int length) {
       float offset = c["offset"].as<float>();
       channels[ch].cal_slope = slope;
       channels[ch].cal_offset = offset;
-      saveCalToNvs(ch, slope, offset);
-      Serial.printf("[cal] ch=%u slope=%.6f offset=%.6f\n",
-                    static_cast<unsigned>(ch), slope, offset);
+      saveCalToStorage(ch, slope, offset);
+      Serial.print("[cal] ch=");
+      Serial.print(static_cast<unsigned>(ch));
+      Serial.print(" slope=");
+      Serial.print(slope, 6);
+      Serial.print(" offset=");
+      Serial.println(offset, 6);
     }
   }
 }
@@ -185,13 +259,13 @@ static void onMqttMessage(char* topic, byte* payload, unsigned int length) {
 
 // ─── Connection lifecycle. ─────────────────────────────────────────────────
 static void connectWifi() {
-  WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_PASS);
   uint32_t start = millis();
   while (WiFi.status() != WL_CONNECTED && (millis() - start) < 20000) {
     delay(250);
   }
-  Serial.printf("[wifi] %s\n", WiFi.status() == WL_CONNECTED ? "connected" : "timeout");
+  Serial.print("[wifi] ");
+  Serial.println(WiFi.status() == WL_CONNECTED ? "connected" : "timeout");
 }
 
 static void connectMqtt() {
@@ -210,7 +284,9 @@ static void connectMqtt() {
       mqtt.subscribe(topicConfig.c_str(), /*qos=*/1);
       Serial.println("[mqtt] connected + subscribed config");
     } else {
-      Serial.printf("[mqtt] connect failed rc=%d retrying in 2s\n", mqtt.state());
+      Serial.print("[mqtt] connect failed rc=");
+      Serial.print(mqtt.state());
+      Serial.println(" retrying in 2s");
       delay(2000);
     }
   }
@@ -220,12 +296,17 @@ static void connectMqtt() {
 void setup() {
   Serial.begin(115200);
   delay(200);
-  Serial.printf("[boot] backbar node %s fw=%s\n", DEVICE_ID, FW_VERSION);
+  Serial.print("[boot] backbar node ");
+  Serial.print(DEVICE_ID);
+  Serial.print(" fw=");
+  Serial.print(FW_VERSION);
+  Serial.print(" platform=");
+  Serial.println(BACKBAR_PLATFORM_NAME);
 
   for (size_t i = 0; i < CHANNEL_COUNT; i++) {
     channels[i].scale.begin(CHANNEL_PINS[i].dout, CHANNEL_PINS[i].sck);
   }
-  loadCalFromNvs();
+  loadCalFromStorage();
   buildTopics();
   connectWifi();
   connectMqtt();

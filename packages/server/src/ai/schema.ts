@@ -56,6 +56,49 @@ export const PhotoImportRequest = z.object({
 export type PhotoImportRequest = z.infer<typeof PhotoImportRequest>;
 
 /**
+ * /ai/product-lookup — extract metadata for the Add Product modal so the
+ * operator confirms+edits rather than typing everything from scratch.
+ *
+ * Schema mirrors the Product table's structured fields (specs/inventory-model.md §3a)
+ * plus a `tags` array using the namespaced taxonomy (§3b). Every field is
+ * nullable — the model returns what it knows and leaves the rest null so
+ * the UI can grey-out missing values.
+ */
+export const ProductLookupRequest = z.object({
+  name: z.string().min(1),
+  /** Optional hint to disambiguate similarly-named products. */
+  hint: z.string().optional(),
+});
+export type ProductLookupRequest = z.infer<typeof ProductLookupRequest>;
+
+export const ProductLookupResult = z.object({
+  /** Suggested slug — kebab-case, no overlap with existing catalog (UI confirms). */
+  suggested_id: z.string().min(1),
+  name: z.string().min(1),
+  category: z.string().min(1),
+  subcategory: z.string().nullable(),
+  abv: z.number().min(0).max(1).nullable(),
+  distillery: z.string().nullable(),
+  origin_country: z.string().length(2).nullable(),
+  origin_region: z.string().nullable(),
+  age_statement_y: z.number().positive().nullable(),
+  flavor_tags: z.array(z.string()).default([]),
+  tags: z
+    .array(
+      z.object({
+        namespace: z.string().min(1),
+        value: z.string().min(1),
+      }),
+    )
+    .default([]),
+  notes: z.string().nullable(),
+  /** Model's own confidence + caveats; surfaced in the UI as a hint. */
+  confidence: z.enum(["high", "medium", "low"]).default("medium"),
+  rationale: z.string().nullable(),
+});
+export type ProductLookupResult = z.infer<typeof ProductLookupResult>;
+
+/**
  * Vision-extracted recipe (spec ai-engine.md §6). Ingredients arrive as raw
  * labels — `import-photo.ts` then fuzzy-matches each label to an existing
  * product, returning the resolved recipe draft + unresolved labels.

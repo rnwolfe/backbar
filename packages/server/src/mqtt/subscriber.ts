@@ -2,6 +2,7 @@ import { nodes as nodesRepo, type DB } from "@backbar/db";
 import type { Bus } from "../bus";
 import { applyReading, IngestError, type IngestInput } from "../ingest";
 import type { MakeableCache } from "../makeable";
+import type { RawSampleCache } from "../rawSampleCache";
 import {
   BirthPayload,
   ConfigPayload,
@@ -16,6 +17,7 @@ export interface MqttDeps {
   db: DB;
   bus: Bus;
   makeable: MakeableCache;
+  rawSamples: RawSampleCache;
 }
 
 /**
@@ -86,12 +88,24 @@ function dispatchReading(deps: MqttDeps, topic: ParsedTopic, body: unknown): voi
     console.warn(`[mqtt] invalid reading payload from ${topic.device_id}`);
     return;
   }
+  const ts = parsed.data.ts ?? Date.now();
+
+  // Always update the raw-sample cache, even when the channel isn't bound to
+  // a bottle. The calibration UI polls this cache during the 2-point capture
+  // — that's the case where there's no bottle yet.
+  deps.rawSamples.set({
+    device_id: topic.device_id,
+    channel: parsed.data.channel,
+    raw_g: parsed.data.raw_g,
+    ts,
+  });
+
   const input: IngestInput = {
     kind: "weight",
     device_id: topic.device_id,
     channel: parsed.data.channel,
     raw_g: parsed.data.raw_g,
-    ts: parsed.data.ts ?? Date.now(),
+    ts,
   };
   try {
     applyReading(deps, input);

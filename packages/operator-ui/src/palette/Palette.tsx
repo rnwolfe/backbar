@@ -195,7 +195,7 @@ export function Palette({ open, onClose, onNav, onToast }: Props) {
           onNav("recipes");
           break;
         case "node":
-          onNav("nodes");
+          onNav("shelf");
           break;
       }
       onClose();

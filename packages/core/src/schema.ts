@@ -22,6 +22,8 @@ const Slug = z.string().regex(/^[a-z0-9][a-z0-9-]*$/, "must be kebab-case slug")
 const Id = z.string().min(1);
 
 // ─── product ──────────────────────────────────────────────────────────────
+// Structured-metadata fields per specs/inventory-model.md §3a. All nullish
+// so existing rows + minimal Add Product forms still validate.
 export const Product = z.object({
   id: Slug,
   name: z.string().min(1),
@@ -32,8 +34,23 @@ export const Product = z.object({
   default_ml: z.number().int().positive().nullish(),
   flavor_tags: z.array(z.string()).default([]),
   notes: z.string().nullish(),
+  distillery: z.string().nullish(),
+  origin_country: z.string().length(2).nullish(), // ISO-3166-1 alpha-2
+  origin_region: z.string().nullish(),
+  producer_url: z.string().url().nullish(),
+  age_statement_y: z.number().positive().nullish(),
 });
 export type Product = z.infer<typeof Product>;
+
+// ─── product_tag ──────────────────────────────────────────────────────────
+// Namespaced taxonomy per specs/inventory-model.md §3b. Recipe `ref_type:tag`
+// matcher consults this table in addition to `product.flavor_tags`.
+export const ProductTag = z.object({
+  product_id: Slug,
+  namespace: z.string().min(1), // smugglers-cove, cocktail-codex, flavor, operator, ...
+  value: z.string().min(1),     // column-still-rum, old-fashioned-root, ...
+});
+export type ProductTag = z.infer<typeof ProductTag>;
 
 // ─── bottle ───────────────────────────────────────────────────────────────
 export const Bottle = z.object({

@@ -1,8 +1,18 @@
 import { isNonDepleting, toMl } from "./units";
-import type { Bottle, Product, Recipe, RecipeIngredient } from "./schema";
+import type { Bottle, Product, ProductTag, Recipe, RecipeIngredient } from "./schema";
 
-/** Bottle joined to its catalog product (the shape the engine works on). */
-export type InvBottle = Bottle & { product: Product };
+/**
+ * Bottle joined to its catalog product (the shape the engine works on).
+ *
+ * `tags` is optional so the engine still functions on tag-unaware callers
+ * (existing code paths, smaller-scope test fixtures). When supplied it lets
+ * recipes use namespaced tag refs like `tag:smugglers-cove:column-still-rum`
+ * — see `tagRefMatches` below for the matcher rule.
+ */
+export type InvBottle = Bottle & {
+  product: Product;
+  tags?: ProductTag[];
+};
 
 export interface Binding {
   /** Ingredient ref_id or label that this binding satisfies. */
@@ -43,6 +53,32 @@ export const FREEFORM_OK: ReadonlySet<string> = new Set([
   "sugar",
 ]);
 
+/**
+ * Tag-ref matcher (per specs/inventory-model.md §3b).
+ *
+ * Two syntaxes, chosen by whether the ref_id contains a colon:
+ *
+ *   `tag:column-still-rum` → matches product.flavor_tags OR any product_tag
+ *                            row regardless of namespace
+ *   `tag:smugglers-cove:column-still-rum` → matches a product_tag row in
+ *                            namespace "smugglers-cove" with that value
+ *
+ * Bare tags also match flavor_tags for back-compat (the freeform string[]
+ * existed before the product_tag table).
+ */
+function tagRefMatches(refId: string, b: InvBottle): boolean {
+  if (!refId) return false;
+  const colon = refId.indexOf(":");
+  if (colon === -1) {
+    if (b.product.flavor_tags.includes(refId)) return true;
+    if (b.tags?.some((t) => t.value === refId)) return true;
+    return false;
+  }
+  const namespace = refId.slice(0, colon);
+  const value = refId.slice(colon + 1);
+  return Boolean(b.tags?.some((t) => t.namespace === namespace && t.value === value));
+}
+
 function candidates(ing: RecipeIngredient, inv: InvBottle[]): InvBottle[] {
   switch (ing.ref_type) {
     case "product":
@@ -50,7 +86,7 @@ function candidates(ing: RecipeIngredient, inv: InvBottle[]): InvBottle[] {
     case "category":
       return inv.filter((b) => b.product.category === ing.ref_id);
     case "tag":
-      return inv.filter((b) => b.product.flavor_tags.includes(ing.ref_id ?? ""));
+      return inv.filter((b) => tagRefMatches(ing.ref_id ?? "", b));
     case "freeform":
       return [];
   }

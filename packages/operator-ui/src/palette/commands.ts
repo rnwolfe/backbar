@@ -2,22 +2,31 @@ import { api } from "../api/client";
 import { registerMany, type Command } from "./registry";
 
 /**
- * Built-in commands per spec §5.1 + specs/ui-operator.md §3.
- *
- * Views can register additional commands by calling `register()` at import
- * time — every view module is imported by `App.tsx`, so commands are
- * registered before the palette opens.
+ * Built-in palette commands. Views can register additional commands by
+ * calling `register()` at import time — every view module is imported by
+ * `App.tsx`, so commands are available before the palette opens.
  */
 const builtins: Command[] = [
-  // ─── nav ────────────────────────────────────────────────────────────────
+  // ─── nav (Console tabs) ─────────────────────────────────────────────────
   {
-    id: "nav.makeability",
-    title: "Go to makeability",
+    id: "nav.dash",
+    title: "Go to dashboard",
     group: "nav",
-    keywords: ["home", "drinks", "live"],
+    keywords: ["home", "service", "overview"],
     icon: "▣",
     run: (ctx) => {
-      ctx.nav("makeability");
+      ctx.nav("dash");
+      ctx.palette.close();
+    },
+  },
+  {
+    id: "nav.bottles",
+    title: "Go to bottles",
+    group: "nav",
+    keywords: ["inventory", "levels", "wall"],
+    icon: "▥",
+    run: (ctx) => {
+      ctx.nav("bottles");
       ctx.palette.close();
     },
   },
@@ -33,21 +42,10 @@ const builtins: Command[] = [
     },
   },
   {
-    id: "nav.bottles",
-    title: "Go to bottles",
-    group: "nav",
-    keywords: ["inventory", "levels"],
-    icon: "▥",
-    run: (ctx) => {
-      ctx.nav("bottles");
-      ctx.palette.close();
-    },
-  },
-  {
     id: "nav.recipes",
     title: "Go to recipes",
     group: "nav",
-    keywords: ["cocktails", "library"],
+    keywords: ["cocktails", "library", "makeable"],
     icon: "▦",
     run: (ctx) => {
       ctx.nav("recipes");
@@ -55,24 +53,46 @@ const builtins: Command[] = [
     },
   },
   {
-    id: "nav.shopping",
-    title: "Go to shopping list",
+    id: "nav.pours",
+    title: "Go to pour history",
     group: "nav",
-    keywords: ["low", "buy", "muse"],
-    icon: "▨",
+    keywords: ["analytics", "history", "depletion"],
+    icon: "▧",
     run: (ctx) => {
-      ctx.nav("shopping");
+      ctx.nav("pours");
       ctx.palette.close();
     },
   },
   {
-    id: "nav.nodes",
-    title: "Go to node health",
+    id: "nav.shelf",
+    title: "Go to smart shelf",
     group: "nav",
-    keywords: ["fleet", "esp32", "mqtt"],
+    keywords: ["fleet", "esp32", "mqtt", "nodes"],
     icon: "▩",
     run: (ctx) => {
-      ctx.nav("nodes");
+      ctx.nav("shelf");
+      ctx.palette.close();
+    },
+  },
+  {
+    id: "nav.menu",
+    title: "Go to guest menu",
+    group: "nav",
+    keywords: ["publish", "snapshot", "guest"],
+    icon: "▨",
+    run: (ctx) => {
+      ctx.nav("menu");
+      ctx.palette.close();
+    },
+  },
+  {
+    id: "nav.settings",
+    title: "Go to settings",
+    group: "nav",
+    keywords: ["admin", "reset", "reseed"],
+    icon: "⚙",
+    run: (ctx) => {
+      ctx.nav("settings");
       ctx.palette.close();
     },
   },
@@ -117,12 +137,14 @@ const builtins: Command[] = [
     icon: "✦",
     run: async (ctx) => {
       try {
-        await api.ideate("operator: surprise me", "make-now");
-        ctx.palette.toast("ideate request sent");
+        const res = await api.ideate({ brief: "operator: surprise me", mode: "now" });
+        if (res.ok) {
+          ctx.palette.toast(`✦ ${res.spec.name}`);
+        } else {
+          ctx.palette.toast(`ideate gave up — reason: ${res.reason}`);
+        }
       } catch (e) {
-        ctx.palette.toast(
-          e instanceof Error ? e.message : "ideate failed — AI gateway may be disabled",
-        );
+        ctx.palette.toast(e instanceof Error ? e.message : "ideate failed — AI gateway may be disabled");
       }
       ctx.palette.close();
     },
@@ -148,17 +170,17 @@ const builtins: Command[] = [
 
   // ─── fleet ──────────────────────────────────────────────────────────────
   {
-    id: "fleet.recalibrate",
-    title: "Recalibrate node",
+    id: "fleet.calibrate",
+    title: "Calibrate channel",
     group: "fleet",
     argKind: "node",
-    keywords: ["tare", "calibrate"],
+    keywords: ["tare", "calibrate", "weight", "2-point"],
     icon: "⚙",
     run: (ctx, arg) => {
       if (arg?.kind !== "node") return;
-      ctx.nav("nodes");
+      ctx.nav("shelf");
       ctx.palette.toast(
-        `recalibration flow for ${arg.value.device_id} ships with task-008 (P2a)`,
+        `${arg.value.device_id} → click any channel pill on its card to start the 2-point cal`,
       );
       ctx.palette.close();
     },

@@ -12,6 +12,7 @@ export {
 export { uuidv7 } from "./ids";
 export {
   products,
+  productTags,
   bottles,
   readings,
   recipes,

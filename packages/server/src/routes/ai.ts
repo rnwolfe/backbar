@@ -9,8 +9,9 @@ import { err, parseBody } from "../errors";
 import { loadInventory } from "../makeable";
 import { ideate } from "../ai/ideate";
 import { importPhoto } from "../ai/import-photo";
+import { lookupProduct } from "../ai/product-lookup";
 import { buildRefSet } from "../ai/prompts";
-import { IdeateRequest, PhotoImportRequest } from "../ai/schema";
+import { IdeateRequest, PhotoImportRequest, ProductLookupRequest } from "../ai/schema";
 
 /**
  * AI routes (spec ai-engine.md §5).
@@ -107,6 +108,25 @@ export function aiRouter(deps: Deps, opts: { hasGateway: boolean } = { hasGatewa
     }
 
     return c.json({ ranked, preview });
+  });
+
+  /**
+   * POST /ai/product-lookup — Haiku-extract product metadata for the Add
+   * Product modal. Returns a confidence-scored draft; the operator confirms
+   * + edits any field before submit. Per specs/inventory-model.md §3a + §3b.
+   */
+  r.post("/product-lookup", async (c) => {
+    const parsed = await parseBody(c, ProductLookupRequest);
+    if (parsed.error) return parsed.response;
+    if (!opts.hasGateway) {
+      return err(c, 503, "ai-disabled", "AI_GATEWAY_API_KEY not set");
+    }
+    const result = await lookupProduct(parsed.data);
+    if (result.ok) return c.json(result);
+    if (result.reason === "no-model") {
+      return err(c, 503, "ai-disabled", "no gateway model available");
+    }
+    return err(c, 502, "extract-failed", result.detail);
   });
 
   return r;

@@ -2,11 +2,12 @@ import { describe, expect, test } from "bun:test";
 import { DENSITY_BY_CATEGORY, evaluate, type InvBottle } from "@backbar/core";
 import { openMemory } from "../src/client";
 import { migrate } from "../src/migrations";
-import { bottles, products, recipes } from "../src/repositories";
+import { bottles, nodes, pours, products, readings, recipes, sensorChannels } from "../src/repositories";
 import {
   CANON_PRODUCTS,
   CANON_RECIPES,
   STARTER_BOTTLES,
+  STARTER_NODES,
   seed,
 } from "../src/seed";
 
@@ -97,6 +98,37 @@ describe("canon seed", () => {
     expect(second.bottles.skipped).toBe(STARTER_BOTTLES.length);
     expect(second.recipes.inserted).toBe(0);
     expect(second.recipes.skipped).toBe(CANON_RECIPES.length);
+    expect(second.nodes.inserted).toBe(0);
+    expect(second.nodes.skipped).toBe(STARTER_NODES.length);
+    expect(second.pours.inserted).toBe(0);
+    expect(second.readings.inserted).toBe(0);
+  });
+
+  test("seeds fleet + history alongside catalog", () => {
+    const db = openMemory();
+    migrate(db);
+    const report = seed(db);
+
+    // Fleet — every starter node lands, some channels bound to bottles.
+    expect(report.nodes.inserted).toBe(STARTER_NODES.length);
+    expect(nodes(db).list().length).toBe(STARTER_NODES.length);
+    const allChannels = sensorChannels(db).list();
+    expect(allChannels.length).toBeGreaterThan(0);
+    expect(allChannels.some((ch) => ch.bottle_id !== null)).toBe(true);
+
+    // Pours — 28d of synthetic activity; ~140 pours all touching real bottles.
+    expect(report.pours.inserted).toBeGreaterThan(50);
+    const allPours = pours(db).list(500);
+    for (const p of allPours) {
+      expect(p.recipe_id).toBeTruthy();
+      for (const b of p.bottles_used) expect(bottles(db).get(b.bottle_id)).not.toBeNull();
+    }
+
+    // Readings — 14 per bottle.
+    for (const b of bottles(db).list()) {
+      const rows = readings(db).forBottle(b.id, 20);
+      expect(rows.length).toBe(14);
+    }
   });
 
   test("recipe ids are slugs and event ids would be UUIDv7", async () => {
