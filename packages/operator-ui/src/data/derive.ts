@@ -147,7 +147,16 @@ export interface JoinedRecipe {
   method: string;
   abv: number;
   balance: number[];
-  ingredients: { product: string; label: string; amount_ml: number }[];
+  ingredients: {
+    product: string;
+    label: string;
+    amount_ml: number;
+    /** Per-ingredient flags from the recipe — surface in detail UI + skip from binding checks. */
+    optional: boolean;
+    garnish: boolean;
+    /** Original ref_type so the UI can tell product vs tag vs category vs freeform. */
+    ref_type: "product" | "category" | "tag" | "freeform";
+  }[];
   status: "makeable" | "one-away" | "unmakeable";
   one_away?: string;
   unmakeable?: string;
@@ -172,6 +181,9 @@ export function joinRecipes(
         label:
           ing.label ?? (ing.ref_type === "product" ? productById.get(refId)?.name ?? refId : refId),
         amount_ml: toMl(ing.amount ?? 0, ing.unit ?? "ml"),
+        optional: Boolean(ing.optional),
+        garnish: Boolean(ing.garnish),
+        ref_type: ing.ref_type,
       };
     });
     const balance = recipeBalance(r);

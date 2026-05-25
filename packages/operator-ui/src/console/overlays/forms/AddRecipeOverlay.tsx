@@ -300,12 +300,13 @@ export function AddRecipeOverlay({ onClose, onToast, mode = "create", initial }:
           key={i}
           style={{
             display: "grid",
-            gridTemplateColumns: "90px 1fr 80px 80px 28px",
+            gridTemplateColumns: "82px 1fr 60px 70px 36px 40px 24px",
             gap: 6,
             alignItems: "center",
             padding: "6px 8px",
             background: T.surface2,
             border: `1px solid ${T.hairline2}`,
+            opacity: row.optional || row.garnish ? 0.85 : 1,
           }}
         >
           <ConSelect
@@ -342,6 +343,18 @@ export function AddRecipeOverlay({ onClose, onToast, mode = "create", initial }:
             value={row.unit}
             options={["ml", "dash", "barspoon", "each", "leaf", "top"] as const}
             onChange={(v) => updateIng(i, { unit: v as IngredientRow["unit"] })}
+          />
+          <FlagToggle
+            label="OPT"
+            on={row.optional}
+            title="optional — doesn't block makeability"
+            onClick={() => updateIng(i, { optional: !row.optional })}
+          />
+          <FlagToggle
+            label="GARN"
+            on={row.garnish}
+            title="garnish — accessory, doesn't block makeability or deplete a bottle"
+            onClick={() => updateIng(i, { garnish: !row.garnish })}
           />
           <button
             type="button"
@@ -456,5 +469,39 @@ export function AddRecipeOverlay({ onClose, onToast, mode = "create", initial }:
         </label>
       </FormRow>
     </FormShell>
+  );
+}
+
+/** Compact toggle button used for OPT / GARN flags on each ingredient row. */
+function FlagToggle({
+  label,
+  on,
+  title,
+  onClick,
+}: {
+  label: string;
+  on: boolean;
+  title: string;
+  onClick(): void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      style={{
+        padding: "4px 0",
+        background: on ? T.cyan : "transparent",
+        color: on ? T.bg : T.inkMuted,
+        border: `1px solid ${on ? T.cyan : T.hairline2}`,
+        fontFamily: T.mono,
+        fontSize: 9,
+        fontWeight: 600,
+        letterSpacing: "0.1em",
+        cursor: "pointer",
+      }}
+    >
+      {label}
+    </button>
   );
 }

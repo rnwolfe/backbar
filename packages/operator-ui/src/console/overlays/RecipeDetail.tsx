@@ -70,7 +70,10 @@ export function RecipeDetailOverlay({
   const [pourState, setPourState] = useState<"idle" | "busy" | "done">("idle");
   const [pourError, setPourError] = useState<string | null>(null);
 
-  const allEnough = bindings.every((b) => b.enough);
+  // Garnishes / optional ingredients don't require a bottle binding — the
+  // server's makeability engine already skips them, and the client check
+  // must match or the pour button locks even when the server says go.
+  const allEnough = bindings.every((b) => b.ing.optional || b.ing.garnish || b.enough);
   const isMakeable = recipe.status === "makeable" && allEnough;
 
   const onMl = (i: number, ml: number) => {
@@ -94,7 +97,7 @@ export function RecipeDetailOverlay({
     setPourError(null);
     try {
       const overrides = bindings
-        .filter((b) => b.binding)
+        .filter((b) => !b.ing.optional && !b.ing.garnish && b.binding)
         .map((b) => ({ bottle_id: b.binding!.bottle_id, ml: b.binding!.ml }));
       await api.pour({ recipe_id: recipe.id, overrides });
       setPourState("done");
@@ -342,17 +345,24 @@ export function RecipeDetailOverlay({
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 6, overflow: "auto" }}>
-            {bindings.map((b, i) => (
+            {bindings.map((b, i) => {
+              const isAccessory = b.ing.optional || b.ing.garnish;
+              const borderColor = isAccessory
+                ? T.hairline
+                : b.enough
+                  ? T.hairline
+                  : T.red;
+              return (
               <div
                 key={i}
                 style={{
                   padding: "10px 12px",
                   background: T.bg,
-                  border: `1px solid ${b.enough ? T.hairline : T.red}`,
-                  opacity: b.enough ? 1 : 0.7,
+                  border: `1px solid ${borderColor}`,
+                  opacity: isAccessory ? 0.65 : b.enough ? 1 : 0.7,
                 }}
               >
-                <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 6 }}>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: isAccessory ? 0 : 6 }}>
                   <span
                     style={{
                       fontSize: 12,
@@ -364,73 +374,107 @@ export function RecipeDetailOverlay({
                       textOverflow: "ellipsis",
                     }}
                   >
-                    {b.bottle?.name ?? b.ing.label}
+                    {isAccessory ? b.ing.label : b.bottle?.name ?? b.ing.label}
                   </span>
-                  <input
-                    type="number"
-                    value={b.binding?.ml ?? b.ing.amount_ml}
-                    onChange={(e) => onMl(i, Math.max(0, Number(e.target.value) || 0))}
-                    disabled={pourState !== "idle"}
-                    style={{
-                      width: 64,
-                      background: T.surface,
-                      border: `1px solid ${T.hairline2}`,
-                      color: accent,
-                      fontFamily: T.mono,
-                      fontSize: 11,
-                      padding: "2px 6px",
-                      textAlign: "right",
-                      outline: "none",
-                    }}
-                    aria-label={`${b.ing.label} ml`}
-                  />
-                  <span style={{ fontFamily: T.mono, fontSize: 11, color: T.inkDim }}>ml</span>
+                  {b.ing.garnish ? (
+                    <span
+                      style={{
+                        fontFamily: T.mono,
+                        fontSize: 9,
+                        letterSpacing: "0.14em",
+                        color: T.inkDim,
+                        border: `1px solid ${T.hairline2}`,
+                        padding: "1px 5px",
+                      }}
+                    >
+                      GARNISH
+                    </span>
+                  ) : b.ing.optional ? (
+                    <span
+                      style={{
+                        fontFamily: T.mono,
+                        fontSize: 9,
+                        letterSpacing: "0.14em",
+                        color: T.inkDim,
+                        border: `1px solid ${T.hairline2}`,
+                        padding: "1px 5px",
+                      }}
+                    >
+                      OPTIONAL
+                    </span>
+                  ) : null}
+                  {!isAccessory ? (
+                    <>
+                      <input
+                        type="number"
+                        value={b.binding?.ml ?? b.ing.amount_ml}
+                        onChange={(e) => onMl(i, Math.max(0, Number(e.target.value) || 0))}
+                        disabled={pourState !== "idle"}
+                        style={{
+                          width: 64,
+                          background: T.surface,
+                          border: `1px solid ${T.hairline2}`,
+                          color: accent,
+                          fontFamily: T.mono,
+                          fontSize: 11,
+                          padding: "2px 6px",
+                          textAlign: "right",
+                          outline: "none",
+                        }}
+                        aria-label={`${b.ing.label} ml`}
+                      />
+                      <span style={{ fontFamily: T.mono, fontSize: 11, color: T.inkDim }}>ml</span>
+                    </>
+                  ) : null}
                 </div>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                    fontSize: 10,
-                    color: T.inkMuted,
-                    fontFamily: T.mono,
-                  }}
-                >
-                  <span>{b.bottle?.level_ml ?? 0}ml</span>
+                {!isAccessory ? (
                   <div
                     style={{
-                      flex: 1,
-                      height: 3,
-                      background: T.surface,
-                      position: "relative",
-                      border: `0.5px solid ${T.hairline2}`,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      fontSize: 10,
+                      color: T.inkMuted,
+                      fontFamily: T.mono,
                     }}
                   >
+                    <span>{b.bottle?.level_ml ?? 0}ml</span>
                     <div
                       style={{
-                        position: "absolute",
-                        top: 0,
-                        bottom: 0,
-                        left: 0,
-                        width: `${(b.bottle?.pct ?? 0) * 100}%`,
-                        background: T.inkDim,
+                        flex: 1,
+                        height: 3,
+                        background: T.surface,
+                        position: "relative",
+                        border: `0.5px solid ${T.hairline2}`,
                       }}
-                    />
-                    <div
-                      style={{
-                        position: "absolute",
-                        top: 0,
-                        bottom: 0,
-                        left: 0,
-                        width: `${(b.afterMl / (b.bottle?.full_ml || 1)) * 100}%`,
-                        background: accent,
-                      }}
-                    />
+                    >
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: 0,
+                          bottom: 0,
+                          left: 0,
+                          width: `${(b.bottle?.pct ?? 0) * 100}%`,
+                          background: T.inkDim,
+                        }}
+                      />
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: 0,
+                          bottom: 0,
+                          left: 0,
+                          width: `${(b.afterMl / (b.bottle?.full_ml || 1)) * 100}%`,
+                          background: accent,
+                        }}
+                      />
+                    </div>
+                    <span style={{ color: accent }}>→ {b.afterMl}ml</span>
                   </div>
-                  <span style={{ color: accent }}>→ {b.afterMl}ml</span>
-                </div>
+                ) : null}
               </div>
-            ))}
+              );
+            })}
           </div>
 
           <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
