@@ -13,6 +13,7 @@ import {
   type TopRecipeRow,
 } from "../api/client";
 import { connectLive, type ConnState, type LiveEvent } from "../api/ws";
+import { uuid } from "../util/uuid";
 
 export type ViewKey =
   | "dash"
@@ -245,7 +246,7 @@ export const store = {
         set((s) => ({
           notices: [
             {
-              id: crypto.randomUUID(),
+              id: uuid(),
               kind: "lowstock" as const,
               text: `low stock: ${e.bottle_id} @ ${Math.round(e.level_ml)} ml`,
               ts: Date.now(),

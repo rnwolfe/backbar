@@ -26,6 +26,7 @@ import { T, accent } from "./console/tokens";
 import { Palette } from "./palette/Palette";
 import "./palette/commands";
 import { store, useBootstrap, useStore, type ViewKey } from "./store/useStore";
+import { uuid } from "./util/uuid";
 import type { DecoratedBottle, JoinedRecipe } from "./data/derive";
 import { Bottles } from "./views/Bottles";
 import { Catalog } from "./views/Catalog";
@@ -71,7 +72,7 @@ export function App() {
   const accentColor = accent(tweaks.accent).primary;
 
   const pushToast = useCallback((text: string) => {
-    const id = crypto.randomUUID();
+    const id = uuid();
     setToasts((t) => [...t, { id, text, ts: Date.now() }]);
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 4000);
   }, []);
