@@ -288,93 +288,123 @@ export function BottleDetailOverlay({
         ) : null}
 
         <Cell
-          title={`LEVEL · LAST ${sparkValues.length} READINGS`}
-          right={detail?.readings.length ? "live readings" : "sparkline (cached)"}
+          title={
+            detail?.readings.length
+              ? `LEVEL · LAST ${detail.readings.length} READING${detail.readings.length === 1 ? "" : "S"}`
+              : `LEVEL · SPARKLINE (NO READINGS YET)`
+          }
+          right={detail?.readings.length ? "live" : "synthetic"}
           style={{ marginTop: 14 }}
         >
-          <div
-            style={{
-              flex: 1,
-              padding: "14px 4px 8px",
-              display: "flex",
-              alignItems: "flex-end",
-              gap: 4,
-              height: 140,
-              position: "relative",
-            }}
-          >
-            {[0.25, 0.5, 0.75].map((t) => (
-              <div
-                key={t}
-                style={{
-                  position: "absolute",
-                  left: 0,
-                  right: 0,
-                  top: `${(1 - t) * 100 - 6}%`,
-                  height: 1,
-                  background: T.hairline,
-                }}
-              >
-                <span
-                  style={{
-                    position: "absolute",
-                    right: 0,
-                    top: -7,
-                    fontSize: 9,
-                    fontFamily: T.mono,
-                    color: T.inkDim,
-                    background: T.surface,
-                    paddingLeft: 4,
-                  }}
-                >
-                  {Math.round(bottle.full_ml * t)}ml
-                </span>
-              </div>
-            ))}
-            {sparkValues.map((v, i) => {
-              const h = Math.min(100, v * 100);
-              const isLast = i === sparkValues.length - 1;
-              const reading = detail?.readings[detail.readings.length - 1 - i];
-              const rows = reading
-                ? [
-                    { label: "ts", value: new Date(reading.ts).toLocaleString() },
-                    { label: "level", value: `${Math.round(reading.level_ml)}ml` },
-                    { label: "source", value: reading.source },
-                  ]
-                : [
-                    { label: "step", value: `${i + 1} / ${sparkValues.length}` },
-                    { label: "level", value: `${Math.round(bottle.full_ml * v)}ml (~${Math.round(v * 100)}%)` },
-                    { label: "data", value: "synth fallback" },
-                  ];
-              return (
-                <Tooltip key={i} content={<TooltipRows rows={rows} />}>
+          {sparkValues.length === 0 ? (
+            <div
+              style={{
+                height: 140,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontFamily: T.mono,
+                fontSize: 11,
+                color: T.inkDim,
+              }}
+            >
+              no readings yet — pour a few and the chart will fill in
+            </div>
+          ) : (
+            <div
+              style={{
+                height: 156,
+                paddingTop: 16,
+                position: "relative",
+              }}
+            >
+              <div style={{ position: "relative", height: 140, padding: "0 4px" }}>
+                {[0.25, 0.5, 0.75].map((t) => (
                   <div
+                    key={t}
                     style={{
-                      flex: 1,
-                      height: `${h}%`,
-                      background: isLast ? accent : T.cyanDim,
-                      opacity: isLast ? 0.95 : 0.7,
-                      position: "relative",
-                      cursor: "default",
+                      position: "absolute",
+                      left: 0,
+                      right: 0,
+                      bottom: `${t * 100}%`,
+                      height: 1,
+                      background: T.hairline,
+                      pointerEvents: "none",
                     }}
                   >
-                    {isLast ? (
-                      <div
-                        style={{
-                          position: "absolute",
-                          bottom: "100%",
-                          left: 0,
-                          right: 0,
-                          height: 2,
-                          background: accent,
-                        }}
-                      />
-                    ) : null}
+                    <span
+                      style={{
+                        position: "absolute",
+                        right: 0,
+                        top: -7,
+                        fontSize: 9,
+                        fontFamily: T.mono,
+                        color: T.inkDim,
+                        background: T.surface,
+                        padding: "0 4px",
+                      }}
+                    >
+                      {Math.round(bottle.full_ml * t)}ml
+                    </span>
                   </div>
-                </Tooltip>
-              );
-            })}
-          </div>
+                ))}
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    display: "flex",
+                    alignItems: "flex-end",
+                    gap: sparkValues.length > 20 ? 2 : 4,
+                  }}
+                >
+                  {sparkValues.map((v, i) => {
+                    const h = Math.max(2, Math.min(100, v * 100));
+                    const isLast = i === sparkValues.length - 1;
+                    const reading = detail?.readings[detail.readings.length - 1 - i];
+                    const rows = reading
+                      ? [
+                          { label: "ts", value: new Date(reading.ts).toLocaleString() },
+                          { label: "level", value: `${Math.round(reading.level_ml)}ml` },
+                          { label: "source", value: reading.source },
+                        ]
+                      : [
+                          { label: "step", value: `${i + 1} / ${sparkValues.length}` },
+                          { label: "level", value: `${Math.round(bottle.full_ml * v)}ml (~${Math.round(v * 100)}%)` },
+                          { label: "data", value: "synth fallback" },
+                        ];
+                    return (
+                      <Tooltip key={i} content={<TooltipRows rows={rows} />}>
+                        <div
+                          style={{
+                            flex: 1,
+                            minWidth: 2,
+                            height: `${h}%`,
+                            background: isLast ? accent : T.cyanDim,
+                            opacity: isLast ? 0.95 : 0.7,
+                            position: "relative",
+                            cursor: "default",
+                          }}
+                        >
+                          {isLast ? (
+                            <div
+                              style={{
+                                position: "absolute",
+                                bottom: "100%",
+                                left: 0,
+                                right: 0,
+                                height: 2,
+                                background: accent,
+                              }}
+                            />
+                          ) : null}
+                        </div>
+                      </Tooltip>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
         </Cell>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 14 }}>
