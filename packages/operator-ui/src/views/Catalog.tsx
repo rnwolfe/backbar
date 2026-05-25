@@ -3,6 +3,7 @@
  * Search, category filter, and a clean tabular list.
  */
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Cell, Pill, SectionHead } from "../console/Cells";
 import { PageHead } from "../console/Chrome";
 import { T, accent } from "../console/tokens";
@@ -17,6 +18,7 @@ interface Props {
 }
 
 export function Catalog({ onAddProduct, onEditProduct, onDuplicateProduct, onPickProduct }: Props = {}) {
+  const navigate = useNavigate();
   const tweaks = useStore((s) => s.tweaks);
   const products = useStore((s) => s.products);
   const bottles = useStore((s) => s.bottles);
@@ -231,6 +233,7 @@ export function Catalog({ onAddProduct, onEditProduct, onDuplicateProduct, onPic
                         if (n > 0) {
                           e.stopPropagation();
                           store.filterBottlesByProduct(p.id);
+                          navigate("/bottles");
                         }
                       }}
                       title={n > 0 ? `show ${n} bottle${n === 1 ? "" : "s"} of ${p.name}` : "no bottles of this product"}

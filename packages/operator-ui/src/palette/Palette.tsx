@@ -38,10 +38,12 @@ interface Props {
   open: boolean;
   onClose(): void;
   onNav(view: ViewKey): void;
+  /** Deep-link to a specific recipe (opens RecipeDetail overlay via URL). */
+  onPickRecipe?(recipe: Recipe): void;
   onToast(text: string): void;
 }
 
-export function Palette({ open, onClose, onNav, onToast }: Props) {
+export function Palette({ open, onClose, onNav, onPickRecipe, onToast }: Props) {
   const products = useStore((s) => s.products);
   const bottles = useStore((s) => s.bottles);
   const recipes = useStore((s) => s.recipes);
@@ -178,7 +180,8 @@ export function Palette({ open, onClose, onNav, onToast }: Props) {
       await screen.command.run(ctx, it.entity);
       return;
     }
-    // Entity in `list` screen: primary = navigate; secondary = log pour (recipe) / nothing else.
+    // Entity in `list` screen: primary = open detail / navigate; secondary =
+    // log pour (recipe-only).
     if (it.entity) {
       if (secondary && it.entity.kind === "recipe") {
         setScreen({ kind: "pour-confirm", recipe: it.entity.value });
@@ -192,7 +195,10 @@ export function Palette({ open, onClose, onNav, onToast }: Props) {
           onNav("bottles");
           break;
         case "recipe":
-          onNav("recipes");
+          // Deep-link to the recipe detail view, not just the list screen,
+          // so the operator lands on the cocktail they searched for.
+          if (onPickRecipe) onPickRecipe(it.entity.value);
+          else onNav("recipes");
           break;
         case "node":
           onNav("shelf");

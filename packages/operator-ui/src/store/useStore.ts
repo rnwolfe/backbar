@@ -63,7 +63,6 @@ function persistTweaks(t: Tweaks) {
 }
 
 export interface AppStore {
-  view: ViewKey;
   conn: ConnState;
   categories: Category[];
   products: Product[];
@@ -89,7 +88,6 @@ export interface AppStore {
 type Listener = () => void;
 
 const initial: AppStore = {
-  view: "bottles",
   conn: "connecting",
   categories: [],
   products: [],
@@ -140,11 +138,10 @@ export const store = {
     listeners.add(l);
     return () => listeners.delete(l);
   },
-  setView(view: ViewKey) {
-    set({ view });
-  },
   filterBottlesByProduct(product_id: string) {
-    set({ view: "bottles", bottlesFilter: { product_id } });
+    // Caller is responsible for navigating to /bottles; the store just records
+    // the filter so the view can honor it. Cleared on next clearBottlesFilter.
+    set({ bottlesFilter: { product_id } });
   },
   clearBottlesFilter() {
     set({ bottlesFilter: null });

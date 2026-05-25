@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Navigate, Route, Routes, useLocation, useMatch, useNavigate } from "react-router-dom";
 import { GridBg, TopBar } from "./console/Chrome";
 import { DensityProvider } from "./console/density";
 import { BottleDetailOverlay } from "./console/overlays/BottleDetail";
@@ -27,7 +28,7 @@ import { Palette } from "./palette/Palette";
 import "./palette/commands";
 import { store, useBootstrap, useStore, type ViewKey } from "./store/useStore";
 import { uuid } from "./util/uuid";
-import type { DecoratedBottle, JoinedRecipe } from "./data/derive";
+import { decorateBottle, joinRecipes, type DecoratedBottle, type JoinedRecipe } from "./data/derive";
 import { Bottles } from "./views/Bottles";
 import { Catalog } from "./views/Catalog";
 import { Dash } from "./views/Dash";
@@ -43,21 +44,64 @@ interface Toast {
   ts: number;
 }
 
+const VIEW_KEYS: readonly ViewKey[] = [
+  "dash",
+  "bottles",
+  "catalog",
+  "recipes",
+  "pours",
+  "shelf",
+  "menu",
+  "settings",
+];
+
+function viewFromPath(pathname: string): ViewKey {
+  const root = pathname.split("/")[1] || "dash";
+  return (VIEW_KEYS as readonly string[]).includes(root) ? (root as ViewKey) : "dash";
+}
+
 export function App() {
   useBootstrap();
-  const view = useStore((s) => s.view);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const view = viewFromPath(location.pathname);
+
   const conn = useStore((s) => s.conn);
   const nodes = useStore((s) => s.nodes);
   const bottlesRaw = useStore((s) => s.bottles);
+  const recipesRaw = useStore((s) => s.recipes);
+  const productsRaw = useStore((s) => s.products);
+  const makeable = useStore((s) => s.makeable);
   const tweaks = useStore((s) => s.tweaks);
 
+  // ── Deep-link state: derived from URL params, not useState. ─────────────
+  const bottleMatch = useMatch("/bottles/:id");
+  const productMatch = useMatch("/catalog/:id");
+  const recipeMatch = useMatch("/recipes/:id");
+  const activeBottleId = bottleMatch?.params.id ?? null;
+  const activeProductId = productMatch?.params.id ?? null;
+  const activeRecipeId = recipeMatch?.params.id ?? null;
+
+  const activeBottle: DecoratedBottle | null = useMemo(() => {
+    if (!activeBottleId) return null;
+    const raw = bottlesRaw.find((b) => b.id === activeBottleId);
+    return raw ? decorateBottle(raw) : null;
+  }, [activeBottleId, bottlesRaw]);
+
+  const joinedRecipes = useMemo(
+    () => joinRecipes(recipesRaw, makeable, productsRaw),
+    [recipesRaw, makeable, productsRaw],
+  );
+  const activeRecipe: JoinedRecipe | null = useMemo(() => {
+    if (!activeRecipeId) return null;
+    return joinedRecipes.find((r) => r.id === activeRecipeId) ?? null;
+  }, [activeRecipeId, joinedRecipes]);
+
+  // ── Ephemeral overlay state (not URL-bound). ────────────────────────────
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
-  const [activeRecipe, setActiveRecipe] = useState<JoinedRecipe | null>(null);
-  const [activeBottle, setActiveBottle] = useState<DecoratedBottle | null>(null);
   const [activeCalibrate, setActiveCalibrate] = useState<{ deviceId: string; channel: number } | null>(null);
   const [activeTare, setActiveTare] = useState<DecoratedBottle | null>(null);
-  const [activeProductId, setActiveProductId] = useState<string | null>(null);
   const [productOverlay, setProductOverlay] = useState<
     { mode: ProductOverlayMode; initial?: Product & { tags?: ProductTagRow[] } } | null
   >(null);
@@ -140,229 +184,242 @@ export function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const nav = useCallback((v: ViewKey) => store.setView(v), []);
+  const nav = useCallback((v: ViewKey) => navigate(`/${v}`), [navigate]);
+
+  // Navigation helpers (used by view callbacks + palette). All eventually
+  // route through `navigate` so the URL is the source of truth.
+  const openBottle = useCallback((b: DecoratedBottle) => navigate(`/bottles/${b.id}`), [navigate]);
+  const openProduct = useCallback((id: string) => navigate(`/catalog/${id}`), [navigate]);
+  const openRecipe = useCallback((r: JoinedRecipe | Recipe) => navigate(`/recipes/${r.id}`), [navigate]);
+  const closeDetail = useCallback((screen: ViewKey) => navigate(`/${screen}`), [navigate]);
 
   const onlineNodes = nodes.filter((n) => n.status === "online").length;
   const lowCount = bottlesRaw.filter((b) => b.full_ml > 0 && b.level_ml / b.full_ml < 0.15).length;
 
   return (
     <DensityProvider value={tweaks.density}>
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: T.bg,
-        color: T.ink,
-        fontFamily: T.body,
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
-      <GridBg />
-      <TopBar
-        view={view}
-        onNav={nav}
-        conn={conn}
-        onlineNodes={onlineNodes}
-        totalNodes={nodes.length}
-        lowCount={lowCount}
-        showFleetTicker={tweaks.showFleetTickerInTopBar}
-        onOpenPalette={() => setPaletteOpen(true)}
-        accentColor={accentColor}
-      />
-
-      <main style={{ flex: 1, minHeight: 0, display: "flex", position: "relative", zIndex: 1 }}>
-        {view === "dash" && <Dash onPickRecipe={setActiveRecipe} />}
-        {view === "bottles" && (
-          <Bottles onPickBottle={setActiveBottle} onAddBottle={() => setBottleOverlay({ mode: "create" })} />
-        )}
-        {view === "catalog" && (
-          <Catalog
-            onAddProduct={() => void openProductOverlay("create")}
-            onEditProduct={(id) => void openProductOverlay("edit", id)}
-            onDuplicateProduct={(id) => void openProductOverlay("duplicate", id)}
-            onPickProduct={(id) => setActiveProductId(id)}
-          />
-        )}
-        {view === "recipes" && (
-          <Recipes
-            onPickRecipe={setActiveRecipe}
-            onAddRecipe={() => openRecipeOverlay("create")}
-            onEditRecipe={(r) => openRecipeOverlay("edit", r)}
-            onDuplicateRecipe={(r) => openRecipeOverlay("duplicate", r)}
-            onImportPhoto={() => setImportPhotoOpen(true)}
-          />
-        )}
-        {view === "pours" && <Pours />}
-        {view === "shelf" && (
-          <Shelf onCalibrate={(deviceId, channel) => setActiveCalibrate({ deviceId, channel })} />
-        )}
-        {view === "menu" && <Menu />}
-        {view === "settings" && <Settings />}
-      </main>
-
-      {activeRecipe ? (
-        <RecipeDetailOverlay
-          recipe={activeRecipe}
-          onClose={() => setActiveRecipe(null)}
-          accent={accentColor}
-          onToast={pushToast}
-          onEdit={(r) => {
-            setActiveRecipe(null);
-            openRecipeOverlay("edit", r);
-          }}
-          onDuplicate={(r) => {
-            setActiveRecipe(null);
-            openRecipeOverlay("duplicate", r);
-          }}
-        />
-      ) : null}
-
-      {activeBottle ? (
-        <BottleDetailOverlay
-          bottle={activeBottle}
-          onClose={() => setActiveBottle(null)}
-          accent={accentColor}
-          onTare={(b) => setActiveTare(b)}
-          onPickProduct={(productId) => {
-            setActiveBottle(null);
-            setActiveProductId(productId);
-          }}
-          onEdit={(b) => {
-            setActiveBottle(null);
-            setBottleOverlay({ mode: "edit", initial: b.raw });
-          }}
-          onDuplicate={(b) => {
-            setActiveBottle(null);
-            setBottleOverlay({ mode: "duplicate", initial: b.raw });
-          }}
-        />
-      ) : null}
-
-      {activeProductId ? (
-        <ProductDetailOverlay
-          productId={activeProductId}
-          accent={accentColor}
-          onClose={() => setActiveProductId(null)}
-          onPickBottle={(b) => {
-            setActiveProductId(null);
-            setActiveBottle(b);
-          }}
-          onPickRecipe={(r) => {
-            setActiveProductId(null);
-            setActiveRecipe(r);
-          }}
-          onEdit={(p) => {
-            setActiveProductId(null);
-            setProductOverlay({ mode: "edit", initial: p });
-          }}
-          onDuplicate={(p) => {
-            setActiveProductId(null);
-            setProductOverlay({ mode: "duplicate", initial: p });
-          }}
-        />
-      ) : null}
-
-      {activeCalibrate ? (
-        <CalibrateOverlay
-          deviceId={activeCalibrate.deviceId}
-          channel={activeCalibrate.channel}
-          onClose={() => {
-            setActiveCalibrate(null);
-            // Refresh /nodes so the channel grid reflects the new cal state.
-            void store.hydrate();
-          }}
-          onToast={pushToast}
-        />
-      ) : null}
-
-      {activeTare ? (
-        <TareOverlay
-          bottle={activeTare}
-          onClose={() => {
-            setActiveTare(null);
-            // Refresh bottles so the new tare lands in the store.
-            void store.hydrate();
-          }}
-          onToast={pushToast}
-        />
-      ) : null}
-
-      {productOverlay ? (
-        <AddProductOverlay
-          mode={productOverlay.mode}
-          initial={productOverlay.initial}
-          onClose={() => setProductOverlay(null)}
-          onToast={pushToast}
-        />
-      ) : null}
-      {bottleOverlay ? (
-        <AddBottleOverlay
-          mode={bottleOverlay.mode}
-          initial={bottleOverlay.initial}
-          onClose={() => setBottleOverlay(null)}
-          onToast={pushToast}
-        />
-      ) : null}
-      {recipeOverlay ? (
-        <AddRecipeOverlay
-          mode={recipeOverlay.mode}
-          initial={recipeOverlay.initial}
-          onClose={() => setRecipeOverlay(null)}
-          onToast={pushToast}
-        />
-      ) : null}
-      {importPhotoOpen ? (
-        <ImportPhotoOverlay onClose={() => setImportPhotoOpen(false)} onToast={pushToast} />
-      ) : null}
-
-      <Palette
-        open={paletteOpen}
-        onClose={() => setPaletteOpen(false)}
-        onNav={(v) => {
-          // Bridge older palette commands (uses ViewKey directly); accept
-          // both new and legacy keys for safety.
-          nav(v);
-        }}
-        onToast={pushToast}
-      />
-
-      <TweaksPanel />
-
       <div
         style={{
-          pointerEvents: "none",
           position: "fixed",
-          bottom: 56,
-          right: 14,
-          zIndex: 40,
+          inset: 0,
+          background: T.bg,
+          color: T.ink,
+          fontFamily: T.body,
           display: "flex",
           flexDirection: "column",
-          gap: 6,
         }}
       >
-        {toasts.map((t) => (
-          <div
-            key={t.id}
-            role="status"
-            style={{
-              pointerEvents: "auto",
-              padding: "8px 12px",
-              background: T.surface,
-              border: `1px solid ${T.hairline2}`,
-              color: T.inkMuted,
-              fontFamily: T.body,
-              fontSize: 12,
-              boxShadow: "0 6px 20px rgba(0,0,0,0.4)",
-              maxWidth: 360,
-            }}
-          >
-            {t.text}
-          </div>
-        ))}
-      </div>
+        <GridBg />
+        <TopBar
+          view={view}
+          onNav={nav}
+          conn={conn}
+          onlineNodes={onlineNodes}
+          totalNodes={nodes.length}
+          lowCount={lowCount}
+          showFleetTicker={tweaks.showFleetTickerInTopBar}
+          onOpenPalette={() => setPaletteOpen(true)}
+          accentColor={accentColor}
+        />
 
-    </div>
+        <main style={{ flex: 1, minHeight: 0, display: "flex", position: "relative", zIndex: 1 }}>
+          <Routes>
+            <Route path="/" element={<Navigate to="/dash" replace />} />
+            <Route path="/dash" element={<Dash onPickRecipe={openRecipe} />} />
+            <Route
+              path="/bottles/*"
+              element={
+                <Bottles
+                  onPickBottle={openBottle}
+                  onAddBottle={() => setBottleOverlay({ mode: "create" })}
+                />
+              }
+            />
+            <Route
+              path="/catalog/*"
+              element={
+                <Catalog
+                  onAddProduct={() => void openProductOverlay("create")}
+                  onEditProduct={(id) => void openProductOverlay("edit", id)}
+                  onDuplicateProduct={(id) => void openProductOverlay("duplicate", id)}
+                  onPickProduct={openProduct}
+                />
+              }
+            />
+            <Route
+              path="/recipes/*"
+              element={
+                <Recipes
+                  onPickRecipe={openRecipe}
+                  onAddRecipe={() => openRecipeOverlay("create")}
+                  onEditRecipe={(r) => openRecipeOverlay("edit", r)}
+                  onDuplicateRecipe={(r) => openRecipeOverlay("duplicate", r)}
+                  onImportPhoto={() => setImportPhotoOpen(true)}
+                />
+              }
+            />
+            <Route path="/pours" element={<Pours />} />
+            <Route
+              path="/shelf"
+              element={
+                <Shelf onCalibrate={(deviceId, channel) => setActiveCalibrate({ deviceId, channel })} />
+              }
+            />
+            <Route path="/menu" element={<Menu />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="*" element={<Navigate to="/dash" replace />} />
+          </Routes>
+        </main>
+
+        {activeRecipe ? (
+          <RecipeDetailOverlay
+            recipe={activeRecipe}
+            onClose={() => closeDetail("recipes")}
+            accent={accentColor}
+            onToast={pushToast}
+            onEdit={(r) => {
+              closeDetail("recipes");
+              openRecipeOverlay("edit", r);
+            }}
+            onDuplicate={(r) => {
+              closeDetail("recipes");
+              openRecipeOverlay("duplicate", r);
+            }}
+          />
+        ) : null}
+
+        {activeBottle ? (
+          <BottleDetailOverlay
+            bottle={activeBottle}
+            onClose={() => closeDetail("bottles")}
+            accent={accentColor}
+            onTare={(b) => setActiveTare(b)}
+            onPickProduct={(productId) => openProduct(productId)}
+            onEdit={(b) => {
+              closeDetail("bottles");
+              setBottleOverlay({ mode: "edit", initial: b.raw });
+            }}
+            onDuplicate={(b) => {
+              closeDetail("bottles");
+              setBottleOverlay({ mode: "duplicate", initial: b.raw });
+            }}
+          />
+        ) : null}
+
+        {activeProductId ? (
+          <ProductDetailOverlay
+            productId={activeProductId}
+            accent={accentColor}
+            onClose={() => closeDetail("catalog")}
+            onPickBottle={(b) => openBottle(b)}
+            onPickRecipe={(r) => openRecipe(r)}
+            onEdit={(p) => {
+              closeDetail("catalog");
+              setProductOverlay({ mode: "edit", initial: p });
+            }}
+            onDuplicate={(p) => {
+              closeDetail("catalog");
+              setProductOverlay({ mode: "duplicate", initial: p });
+            }}
+          />
+        ) : null}
+
+        {activeCalibrate ? (
+          <CalibrateOverlay
+            deviceId={activeCalibrate.deviceId}
+            channel={activeCalibrate.channel}
+            onClose={() => {
+              setActiveCalibrate(null);
+              // Refresh /nodes so the channel grid reflects the new cal state.
+              void store.hydrate();
+            }}
+            onToast={pushToast}
+          />
+        ) : null}
+
+        {activeTare ? (
+          <TareOverlay
+            bottle={activeTare}
+            onClose={() => {
+              setActiveTare(null);
+              // Refresh bottles so the new tare lands in the store.
+              void store.hydrate();
+            }}
+            onToast={pushToast}
+          />
+        ) : null}
+
+        {productOverlay ? (
+          <AddProductOverlay
+            mode={productOverlay.mode}
+            initial={productOverlay.initial}
+            onClose={() => setProductOverlay(null)}
+            onToast={pushToast}
+          />
+        ) : null}
+        {bottleOverlay ? (
+          <AddBottleOverlay
+            mode={bottleOverlay.mode}
+            initial={bottleOverlay.initial}
+            onClose={() => setBottleOverlay(null)}
+            onToast={pushToast}
+          />
+        ) : null}
+        {recipeOverlay ? (
+          <AddRecipeOverlay
+            mode={recipeOverlay.mode}
+            initial={recipeOverlay.initial}
+            onClose={() => setRecipeOverlay(null)}
+            onToast={pushToast}
+          />
+        ) : null}
+        {importPhotoOpen ? (
+          <ImportPhotoOverlay onClose={() => setImportPhotoOpen(false)} onToast={pushToast} />
+        ) : null}
+
+        <Palette
+          open={paletteOpen}
+          onClose={() => setPaletteOpen(false)}
+          onNav={(v) => nav(v)}
+          onPickRecipe={(r) => openRecipe(r)}
+          onToast={pushToast}
+        />
+
+        <TweaksPanel />
+
+        <div
+          style={{
+            pointerEvents: "none",
+            position: "fixed",
+            bottom: 56,
+            right: 14,
+            zIndex: 40,
+            display: "flex",
+            flexDirection: "column",
+            gap: 6,
+          }}
+        >
+          {toasts.map((t) => (
+            <div
+              key={t.id}
+              role="status"
+              style={{
+                pointerEvents: "auto",
+                padding: "8px 12px",
+                background: T.surface,
+                border: `1px solid ${T.hairline2}`,
+                color: T.inkMuted,
+                fontFamily: T.body,
+                fontSize: 12,
+                boxShadow: "0 6px 20px rgba(0,0,0,0.4)",
+                maxWidth: 360,
+              }}
+            >
+              {t.text}
+            </div>
+          ))}
+        </div>
+      </div>
     </DensityProvider>
   );
 }
