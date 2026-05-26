@@ -66,6 +66,10 @@ export function menuRouter(deps: Deps) {
   //     current inventory, so there's nothing to write. Returns
   //     {mode:"caddy", url: GUEST_PUBLIC_URL, count} for symmetry.
   r.post("/menu/publish", async (c) => {
+    // Recompute makeability so the published projection reflects the current
+    // inventory — without this, a recent pour / restock wouldn't show up
+    // until the next ingest event triggered the cache refresh.
+    deps.makeable.recompute();
     const items = buildGuestMenu(deps);
 
     if (deps.guestMenu.mode === "caddy") {

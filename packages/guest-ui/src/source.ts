@@ -4,10 +4,13 @@ import type { GuestMenuPayload, MenuItem } from "./types";
  * Where the guest UI gets its data — runtime switch, build is identical
  * (spec §2). In snapshot mode the build fetches a relative `./menu.json`
  * that publish wrote alongside the static assets. In Caddy/live mode the
- * build fetches `/api/guest/menu` through Caddy's reverse proxy.
+ * build fetches `/api/guest/menu` through Caddy's reverse proxy (or the
+ * Vite dev proxy in development).
  *
- * The mode is baked at build time via Vite env so the static bundle never
- * needs to guess.
+ * Default is "live" — dev works out of the box because the Vite proxy
+ * forwards to the running Bun server. Production Vercel builds opt into
+ * snapshot mode via `VITE_GUEST_MODE=snapshot` so the menu is baked into
+ * the static bundle and served alongside it.
  */
 export type SourceMode = "snapshot" | "live";
 
@@ -19,7 +22,7 @@ declare global {
 }
 
 export function resolveMode(): SourceMode {
-  return (import.meta.env.VITE_GUEST_MODE as SourceMode | undefined) ?? "snapshot";
+  return (import.meta.env.VITE_GUEST_MODE as SourceMode | undefined) ?? "live";
 }
 
 export function resolveUrl(mode: SourceMode): string {

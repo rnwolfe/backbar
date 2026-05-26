@@ -32,8 +32,10 @@ export function App() {
     };
   }, [mode]);
 
-  // Live mode polls (every 60s) so an 86'd drink updates without a rebuild.
-  // Snapshot mode never polls — the JSON is baked.
+  // Live mode polls so an 86'd drink (or a fresh /menu/publish) updates
+  // without a manual refresh. 15s is short enough that operators see their
+  // changes appear within a coffee sip; snapshot mode never polls — the JSON
+  // is baked into the static bundle.
   useEffect(() => {
     if (mode !== "live") return;
     const handle = setInterval(() => {
@@ -42,7 +44,7 @@ export function App() {
         .catch(() => {
           /* keep last good state; transient errors shouldn't blank the menu */
         });
-    }, 60_000);
+    }, 15_000);
     return () => clearInterval(handle);
   }, [mode]);
 
