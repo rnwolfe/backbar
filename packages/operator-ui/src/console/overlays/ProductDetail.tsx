@@ -16,6 +16,7 @@ import { Dot } from "../Chrome";
 import { catOf, decorateBottle, joinRecipes, type DecoratedBottle, type JoinedRecipe } from "../../data/derive";
 import { T } from "../tokens";
 import { store, useStore } from "../../store/useStore";
+import { copyToClipboard, shareUrl } from "../../util/share";
 
 interface Props {
   productId: string;
@@ -23,6 +24,7 @@ interface Props {
   accent: string;
   onPickBottle?(b: DecoratedBottle): void;
   onPickRecipe?(r: JoinedRecipe): void;
+  onToast?(text: string): void;
   onEdit?(p: Product & { tags?: ProductTagRow[] }): void;
   onDuplicate?(p: Product & { tags?: ProductTagRow[] }): void;
 }
@@ -33,6 +35,7 @@ export function ProductDetailOverlay({
   accent,
   onPickBottle,
   onPickRecipe,
+  onToast,
   onEdit,
   onDuplicate,
 }: Props) {
@@ -158,6 +161,15 @@ export function ProductDetailOverlay({
             marginBottom: 14,
           }}
         >
+          <HeaderAction
+            label="SHARE"
+            title="copy a public link to this product"
+            onClick={async () => {
+              const url = shareUrl("product", productId);
+              const ok = await copyToClipboard(url);
+              onToast?.(ok ? `link copied · ${url}` : `couldn't copy — ${url}`);
+            }}
+          />
           {onEdit && detail ? (
             <HeaderAction label="EDIT" title="edit product" onClick={() => onEdit(detail)} />
           ) : null}

@@ -12,6 +12,7 @@ import { api, type BottleDetail, type ProductTagRow } from "../../api/client";
 import type { DecoratedBottle, JoinedRecipe } from "../../data/derive";
 import { catOf, joinRecipes } from "../../data/derive";
 import { useStore } from "../../store/useStore";
+import { copyToClipboard, shareUrl } from "../../util/share";
 
 export function BottleDetailOverlay({
   bottle,
@@ -135,6 +136,15 @@ export function BottleDetailOverlay({
             marginBottom: 14,
           }}
         >
+          <HeaderAction
+            label="SHARE"
+            title="copy a public link to this bottle"
+            onClick={async () => {
+              const url = shareUrl("bottle", bottle.id);
+              const ok = await copyToClipboard(url);
+              onToast?.(ok ? `link copied · ${url}` : `couldn't copy — ${url}`);
+            }}
+          />
           {onEdit ? (
             <HeaderAction label="EDIT" title="edit bottle" onClick={() => onEdit(bottle)} />
           ) : null}

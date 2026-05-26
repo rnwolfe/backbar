@@ -320,6 +320,7 @@ export function App() {
             onClose={() => closeDetail("catalog")}
             onPickBottle={(b) => openBottle(b)}
             onPickRecipe={(r) => openRecipe(r)}
+            onToast={pushToast}
             onEdit={(p) => {
               closeDetail("catalog");
               setProductOverlay({ mode: "edit", initial: p });

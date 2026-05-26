@@ -12,6 +12,7 @@ import { nodesRouter } from "./routes/nodes";
 import { pourRouter } from "./routes/pour";
 import { poursRouter } from "./routes/pours";
 import { productsRouter } from "./routes/products";
+import { publicRouter } from "./routes/public";
 import { readingsRouter } from "./routes/readings";
 import { recipesRouter } from "./routes/recipes";
 import { shoppingRouter } from "./routes/shopping";
@@ -52,6 +53,9 @@ export function buildApp(deps: Deps) {
   app.route("/ai", aiRouter(deps, { hasGateway }));
   app.route("/admin", adminRouter(deps));
   app.route("/guest", menuRouter(deps)); // exposes /guest/menu + /guest/menu/publish
+  // Public read-only share endpoints — recipe / product / bottle cards.
+  // Mounted only at /guest so they can't shadow the operator API.
+  app.route("/guest", publicRouter(deps));
 
   // Operators call /menu/publish (no /guest prefix) per spec api.md §1.
   app.route("/", menuRouter(deps));

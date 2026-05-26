@@ -11,6 +11,7 @@ import { T } from "../tokens";
 import type { JoinedRecipe } from "../../data/derive";
 import { decorateBottle } from "../../data/derive";
 import { useStore } from "../../store/useStore";
+import { copyToClipboard, shareUrl } from "../../util/share";
 
 interface Binding {
   ref: string;
@@ -148,6 +149,15 @@ export function RecipeDetailOverlay({
             zIndex: 2,
           }}
         >
+          <HeaderAction
+            label="SHARE"
+            title="copy a public link to this recipe"
+            onClick={async () => {
+              const url = shareUrl("recipe", recipe.id);
+              const ok = await copyToClipboard(url);
+              onToast?.(ok ? `link copied · ${url}` : `couldn't copy — ${url}`);
+            }}
+          />
           {onEdit ? (
             <HeaderAction label="EDIT" title="edit recipe" onClick={() => onEdit(recipe.raw)} />
           ) : null}
