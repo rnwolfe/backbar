@@ -5,12 +5,30 @@
 @layer base {
   :root {
     color-scheme: dark;
+    /* Real viewport height — pinch-perfect on iOS Safari where 100vh
+       includes the URL bar. JS keeps this in sync. */
+    --app-vh: 100vh;
+    /* Safe-area helpers — non-zero on notched / home-indicator devices. */
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
   }
   html,
   body,
   #root {
     height: 100%;
     overflow: hidden;
+  }
+  /* Mobile: let the page scroll naturally and account for the soft-keyboard +
+     URL bar instead of locking the body. The app shell still pins TopBar +
+     BottomNav via fixed positioning. */
+  @media (max-width: 767px) {
+    html,
+    body,
+    #root {
+      height: auto;
+      min-height: var(--app-vh);
+      overflow: visible;
+    }
   }
   html,
   body {
@@ -19,6 +37,9 @@
     font-family: "Geist", system-ui, sans-serif;
     margin: 0;
     padding: 0;
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior-y: contain;
   }
   *,
   *::before,
@@ -27,6 +48,24 @@
   }
   body {
     font-feature-settings: "tnum" 1, "cv11" 1;
+  }
+  /* iOS auto-zooms text inputs whose font-size is < 16px on focus. Bump form
+     controls at narrow viewports so the operator UI doesn't jolt every time
+     they tap "ADD BOTTLE". */
+  @media (max-width: 767px) {
+    input,
+    textarea,
+    select {
+      font-size: 16px !important;
+    }
+  }
+  /* Min 44px tap targets on mobile — accessibility floor. */
+  @media (max-width: 767px) {
+    button,
+    [role="button"],
+    a[href] {
+      min-height: 36px;
+    }
   }
   ::selection {
     background: #4ddae8;

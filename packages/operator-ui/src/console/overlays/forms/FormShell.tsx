@@ -3,9 +3,13 @@
  * Add Recipe / Import Photo). Provides the dimmed backdrop, close button,
  * header strip, and primary/secondary action footer. Each form owns its
  * own field layout + submit handler — this is just chrome.
+ *
+ * On mobile (< 768px) the dialog goes full-screen edge-to-edge so the form
+ * has room to breathe and the on-screen keyboard doesn't fight the layout.
  */
 import type { ReactNode } from "react";
 import { T } from "../../tokens";
+import { useViewport } from "../../../util/useViewport";
 
 interface Props {
   title: string;
@@ -32,6 +36,7 @@ export function FormShell({
   width = 560,
   children,
 }: Props) {
+  const { isMobile } = useViewport();
   return (
     <div
       role="dialog"
@@ -44,23 +49,27 @@ export function FormShell({
         backdropFilter: "blur(8px)",
         zIndex: 60,
         display: "flex",
-        alignItems: "center",
+        alignItems: isMobile ? "stretch" : "center",
         justifyContent: "center",
-        padding: 40,
+        padding: isMobile ? 0 : 40,
       }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          width,
-          maxHeight: "85vh",
+          width: isMobile ? "100%" : width,
+          maxWidth: isMobile ? "100%" : "100%",
+          maxHeight: isMobile ? "100%" : "85vh",
+          height: isMobile ? "100%" : "auto",
           background: T.surface,
-          border: `1px solid ${T.hairline2}`,
+          border: isMobile ? "none" : `1px solid ${T.hairline2}`,
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
           position: "relative",
-          boxShadow: "0 24px 80px rgba(0,0,0,0.7)",
+          boxShadow: isMobile ? "none" : "0 24px 80px rgba(0,0,0,0.7)",
+          paddingTop: isMobile ? "var(--safe-top, 0px)" : 0,
+          paddingBottom: isMobile ? "var(--safe-bottom, 0px)" : 0,
         }}
       >
         <button
@@ -69,15 +78,15 @@ export function FormShell({
           aria-label="close"
           style={{
             position: "absolute",
-            top: 14,
+            top: isMobile ? "calc(var(--safe-top, 0px) + 12px)" : 14,
             right: 14,
-            width: 30,
-            height: 30,
+            width: isMobile ? 40 : 30,
+            height: isMobile ? 40 : 30,
             background: "transparent",
             border: `1px solid ${T.hairline2}`,
             color: T.inkMuted,
             fontFamily: T.mono,
-            fontSize: 14,
+            fontSize: isMobile ? 16 : 14,
             cursor: "pointer",
             zIndex: 2,
           }}
@@ -85,7 +94,7 @@ export function FormShell({
           ✕
         </button>
 
-        <div style={{ padding: "24px 28px 12px", borderBottom: `1px solid ${T.hairline}` }}>
+        <div style={{ padding: isMobile ? "20px 18px 12px" : "24px 28px 12px", borderBottom: `1px solid ${T.hairline}` }}>
           <div style={{ fontSize: 10, fontFamily: T.mono, color: T.cyan, letterSpacing: "0.18em" }}>NEW</div>
           <div style={{ fontSize: 22, fontWeight: 600, color: T.ink, marginTop: 4, letterSpacing: "-0.01em" }}>
             {title}
@@ -102,7 +111,7 @@ export function FormShell({
             onSubmit();
           }}
           style={{
-            padding: "16px 28px",
+            padding: isMobile ? "14px 18px 24px" : "16px 28px",
             display: "flex",
             flexDirection: "column",
             gap: 12,
@@ -133,12 +142,13 @@ export function FormShell({
               type="button"
               onClick={onClose}
               style={{
-                padding: "10px 16px",
+                padding: isMobile ? "14px 16px" : "10px 16px",
+                minHeight: isMobile ? 48 : "auto",
                 background: "transparent",
                 color: T.inkMuted,
                 border: `1px solid ${T.hairline2}`,
                 fontFamily: T.mono,
-                fontSize: 11,
+                fontSize: isMobile ? 12 : 11,
                 letterSpacing: "0.14em",
                 cursor: "pointer",
               }}
@@ -150,12 +160,13 @@ export function FormShell({
               disabled={submitDisabled || submitting}
               style={{
                 flex: 1,
-                padding: "10px 16px",
+                padding: isMobile ? "14px 16px" : "10px 16px",
+                minHeight: isMobile ? 48 : "auto",
                 background: submitDisabled || submitting ? T.surface2 : T.cyan,
                 color: submitDisabled || submitting ? T.inkMuted : T.bg,
                 border: "none",
                 fontFamily: T.mono,
-                fontSize: 12,
+                fontSize: isMobile ? 13 : 12,
                 letterSpacing: "0.14em",
                 fontWeight: 600,
                 cursor: submitDisabled || submitting ? "not-allowed" : "pointer",

@@ -13,6 +13,7 @@ import type { DecoratedBottle, JoinedRecipe } from "../../data/derive";
 import { catOf, joinRecipes } from "../../data/derive";
 import { useStore } from "../../store/useStore";
 import { copyToClipboard, shareUrl } from "../../util/share";
+import { useViewport } from "../../util/useViewport";
 
 export function BottleDetailOverlay({
   bottle,
@@ -37,6 +38,7 @@ export function BottleDetailOverlay({
   const products = useStore((s) => s.products);
   const recipesRaw = useStore((s) => s.recipes);
   const makeable = useStore((s) => s.makeable);
+  const { isMobile } = useViewport();
   const cat = catOf(bottle.category);
 
   const [detail, setDetail] = useState<BottleDetail | null>(null);
@@ -110,21 +112,25 @@ export function BottleDetailOverlay({
         backdropFilter: "blur(8px)",
         zIndex: 50,
         display: "flex",
-        alignItems: "center",
+        alignItems: isMobile ? "stretch" : "center",
         justifyContent: "center",
-        padding: 40,
+        padding: isMobile ? 0 : 40,
       }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          width: 780,
-          maxHeight: "85vh",
+          width: isMobile ? "100%" : 780,
+          maxWidth: "100%",
+          maxHeight: isMobile ? "100%" : "85vh",
+          height: isMobile ? "100%" : "auto",
           background: T.surface,
-          border: `1px solid ${T.hairline2}`,
-          padding: "28px 32px",
+          border: isMobile ? "none" : `1px solid ${T.hairline2}`,
+          padding: isMobile ? "16px 16px 32px" : "28px 32px",
+          paddingTop: isMobile ? "calc(var(--safe-top, 0px) + 16px)" : "28px",
+          paddingBottom: isMobile ? "calc(var(--safe-bottom, 0px) + 32px)" : "28px",
           overflow: "auto",
-          boxShadow: "0 24px 80px rgba(0,0,0,0.7)",
+          boxShadow: isMobile ? "none" : "0 24px 80px rgba(0,0,0,0.7)",
           position: "relative",
         }}
       >

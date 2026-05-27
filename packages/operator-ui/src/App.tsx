@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Navigate, Route, Routes, useLocation, useMatch, useNavigate } from "react-router-dom";
-import { GridBg, TopBar } from "./console/Chrome";
+import { BottomNav, GridBg, TopBar } from "./console/Chrome";
 import { DensityProvider } from "./console/density";
 import { BottleDetailOverlay } from "./console/overlays/BottleDetail";
 import { CalibrateOverlay } from "./console/overlays/CalibrateOverlay";
@@ -28,6 +28,7 @@ import { Palette } from "./palette/Palette";
 import "./palette/commands";
 import { store, useBootstrap, useFlag, useStore, type ViewKey } from "./store/useStore";
 import { uuid } from "./util/uuid";
+import { useViewport } from "./util/useViewport";
 import { decorateBottle, joinRecipes, type DecoratedBottle, type JoinedRecipe } from "./data/derive";
 import { Bottles } from "./views/Bottles";
 import { Catalog } from "./views/Catalog";
@@ -68,6 +69,7 @@ export function App() {
 
   const conn = useStore((s) => s.conn);
   const shelfEnabled = useFlag("shelf");
+  const viewport = useViewport();
   const nodes = useStore((s) => s.nodes);
   const bottlesRaw = useStore((s) => s.bottles);
   const recipesRaw = useStore((s) => s.recipes);
@@ -222,9 +224,21 @@ export function App() {
           onOpenPalette={() => setPaletteOpen(true)}
           accentColor={accentColor}
           hiddenTabs={shelfEnabled ? undefined : ["shelf"]}
+          isMobile={viewport.isMobile}
         />
 
-        <main style={{ flex: 1, minHeight: 0, display: "flex", position: "relative", zIndex: 1 }}>
+        <main
+          style={{
+            flex: 1,
+            minHeight: 0,
+            display: "flex",
+            position: "relative",
+            zIndex: 1,
+            // Reserve room for the fixed BottomNav on mobile so content's
+            // scroll bottom + sticky-action footers don't sit behind it.
+            paddingBottom: viewport.isMobile ? "calc(58px + var(--safe-bottom, 0px))" : 0,
+          }}
+        >
           <Routes>
             <Route path="/" element={<Navigate to="/dash" replace />} />
             <Route path="/dash" element={<Dash onPickRecipe={openRecipe} />} />
@@ -393,14 +407,29 @@ export function App() {
           onToast={pushToast}
         />
 
-        <TweaksPanel />
+        {/* TweaksPanel is desktop-only; the mobile chrome doesn't have room
+            for a floating accessory. Operators get the same controls in
+            Settings → Appearance. */}
+        {viewport.isMobile ? null : <TweaksPanel />}
+
+        {viewport.isMobile ? (
+          <BottomNav
+            view={view}
+            onNav={nav}
+            accentColor={accentColor}
+            hiddenTabs={shelfEnabled ? undefined : ["shelf"]}
+          />
+        ) : null}
 
         <div
           style={{
             pointerEvents: "none",
             position: "fixed",
-            bottom: 56,
+            // Toasts sit above the BottomNav on mobile and above the floating
+            // TweaksPanel trigger on desktop.
+            bottom: viewport.isMobile ? "calc(72px + var(--safe-bottom, 0px))" : 56,
             right: 14,
+            left: viewport.isMobile ? 14 : "auto",
             zIndex: 40,
             display: "flex",
             flexDirection: "column",

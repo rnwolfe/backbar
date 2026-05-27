@@ -12,6 +12,7 @@ import type { JoinedRecipe } from "../../data/derive";
 import { decorateBottle } from "../../data/derive";
 import { useStore } from "../../store/useStore";
 import { copyToClipboard, shareUrl } from "../../util/share";
+import { useViewport } from "../../util/useViewport";
 
 interface Binding {
   ref: string;
@@ -36,6 +37,7 @@ export function RecipeDetailOverlay({
 }) {
   const bottlesRaw = useStore((s) => s.bottles);
   const products = useStore((s) => s.products);
+  const { isMobile } = useViewport();
   const decorated = useMemo(() => bottlesRaw.map(decorateBottle), [bottlesRaw]);
 
   const axes = ["sweet", "sour", "bitter", "strong", "aromatic", "dilution"];
@@ -121,22 +123,27 @@ export function RecipeDetailOverlay({
         backdropFilter: "blur(8px)",
         zIndex: 50,
         display: "flex",
-        alignItems: "center",
+        alignItems: isMobile ? "stretch" : "center",
         justifyContent: "center",
-        padding: 40,
+        padding: isMobile ? 0 : 40,
       }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          width: 1080,
-          maxHeight: "90vh",
+          width: isMobile ? "100%" : 1080,
+          maxWidth: "100%",
+          maxHeight: isMobile ? "100%" : "90vh",
+          height: isMobile ? "100%" : "auto",
           background: T.surface,
-          border: `1px solid ${T.hairline2}`,
+          border: isMobile ? "none" : `1px solid ${T.hairline2}`,
           display: "flex",
-          overflow: "hidden",
+          flexDirection: isMobile ? "column" : "row",
+          overflow: isMobile ? "auto" : "hidden",
           position: "relative",
-          boxShadow: "0 24px 80px rgba(0,0,0,0.7)",
+          boxShadow: isMobile ? "none" : "0 24px 80px rgba(0,0,0,0.7)",
+          paddingTop: isMobile ? "var(--safe-top, 0px)" : 0,
+          paddingBottom: isMobile ? "var(--safe-bottom, 0px)" : 0,
         }}
       >
         <div
@@ -334,10 +341,11 @@ export function RecipeDetailOverlay({
 
         <div
           style={{
-            width: 340,
+            width: isMobile ? "100%" : 340,
             background: T.surface2,
-            borderLeft: `1px solid ${T.hairline2}`,
-            padding: "28px 24px",
+            borderLeft: isMobile ? "none" : `1px solid ${T.hairline2}`,
+            borderTop: isMobile ? `1px solid ${T.hairline2}` : "none",
+            padding: isMobile ? "20px 16px 24px" : "28px 24px",
             display: "flex",
             flexDirection: "column",
             gap: 18,
