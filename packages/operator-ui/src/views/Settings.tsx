@@ -15,6 +15,7 @@ import { T, accent } from "../console/tokens";
 import { store, useStore } from "../store/useStore";
 import { SettingsCategories } from "./SettingsCategories";
 import { SettingsFlags } from "./SettingsFlags";
+import { useViewport } from "../util/useViewport";
 
 type Pending = "reset-bar" | "reset-recipes" | "reseed" | null;
 
@@ -65,6 +66,7 @@ export function Settings() {
   const [pending, setPending] = useState<Pending>(null);
   const [lastResult, setLastResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { isMobile } = useViewport();
   const A = accent(tweaks.accent).primary;
 
   async function run(action: ActionRow) {
@@ -104,7 +106,15 @@ export function Settings() {
         meta={`${products} products · ${bottles} bottles · ${recipes} recipes`}
       />
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, padding: "0 16px", paddingBottom: 24 }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+          gap: 12,
+          padding: "0 16px",
+          paddingBottom: 24,
+        }}
+      >
         <Cell title="ADMIN ACTIONS">
           <div style={{ display: "flex", flexDirection: "column", gap: 12, paddingTop: 4 }}>
             {ACTIONS.map((a) => (

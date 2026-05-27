@@ -11,6 +11,7 @@ import { PageHead } from "../console/Chrome";
 import { T, accent } from "../console/tokens";
 import { joinRecipes, type JoinedRecipe } from "../data/derive";
 import { store, useStore } from "../store/useStore";
+import { useViewport } from "../util/useViewport";
 
 interface Props {
   onPickRecipe?(r: JoinedRecipe): void;
@@ -49,6 +50,7 @@ export function Recipes({
   const recipesRaw = useStore((s) => s.recipes);
   const makeable = useStore((s) => s.makeable);
   const bottlesCount = useStore((s) => s.bottles.length);
+  const { isMobile } = useViewport();
   const A = accent(tweaks.accent).primary;
 
   const joined = useMemo(
@@ -202,14 +204,23 @@ export function Recipes({
   };
 
   return (
-    <div style={{ display: "flex", flex: 1, minHeight: 0, position: "relative", zIndex: 1 }}>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: isMobile ? "column" : "row",
+        flex: 1,
+        minHeight: 0,
+        position: "relative",
+        zIndex: 1,
+      }}
+    >
       <aside
         style={{
           width: 200,
           borderRight: `1px solid ${T.hairline}`,
           background: T.surface,
           flexShrink: 0,
-          display: "flex",
+          display: isMobile ? "none" : "flex",
           flexDirection: "column",
         }}
       >
@@ -299,7 +310,7 @@ export function Recipes({
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "1fr 1fr 1fr",
+            gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr",
             gap: 10,
             padding: "0 16px",
             paddingBottom: 24,
@@ -340,8 +351,9 @@ export function Recipes({
 
       <aside
         style={{
-          width: 340,
-          borderLeft: `1px solid ${T.hairline}`,
+          width: isMobile ? "auto" : 340,
+          borderLeft: isMobile ? "none" : `1px solid ${T.hairline}`,
+          borderTop: isMobile ? `1px solid ${T.hairline}` : "none",
           background: T.surface,
           flexShrink: 0,
           display: "flex",

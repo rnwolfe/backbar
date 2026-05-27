@@ -15,6 +15,7 @@ import { T, accent } from "../console/tokens";
 import { Tooltip, TooltipRows } from "../console/Tooltip";
 import { useStore } from "../store/useStore";
 import { decorateMuse } from "../data/synthetic";
+import { useViewport } from "../util/useViewport";
 
 type DashPeriod = "tonight" | "week" | "28d";
 const DASH_PERIOD_DAYS: Record<DashPeriod, number> = { tonight: 1, week: 7, "28d": 28 };
@@ -35,6 +36,7 @@ export function Dash({ onPickRecipe }: Props) {
   const storeSummary = useStore((s) => s.poursSummary);
   const pours = useStore((s) => s.pours);
   const telemetry = useStore((s) => s.telemetry);
+  const { isMobile } = useViewport();
   const A = accent(tweaks.accent).primary;
 
   const [period, setPeriod] = useState<DashPeriod>("28d");
@@ -116,7 +118,14 @@ export function Dash({ onPickRecipe }: Props) {
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 10, marginBottom: 14 }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(5,1fr)",
+          gap: 10,
+          marginBottom: 14,
+        }}
+      >
         <Stat
           label="POURS TODAY"
           value={(telemetry?.pours_today ?? 0).toString()}
@@ -152,7 +161,15 @@ export function Dash({ onPickRecipe }: Props) {
         />
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr", gap: 10, flex: 1, minHeight: 340 }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: isMobile ? "1fr" : "1.4fr 1fr 1fr",
+          gap: 10,
+          flex: 1,
+          minHeight: 340,
+        }}
+      >
         <Cell
           title={`POUR CADENCE · ${DASH_PERIOD_LABEL[period]}`}
           right={

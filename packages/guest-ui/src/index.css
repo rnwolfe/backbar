@@ -5,9 +5,19 @@
 @layer base {
   :root {
     color-scheme: light;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
   }
   body {
     font-feature-settings: "liga" 1, "kern" 1, "onum" 1;
+    -webkit-tap-highlight-color: transparent;
+    /* Honor notch + home indicator on mobile so the cover header doesn't
+       clip under iOS's status bar. */
+    padding-top: var(--safe-top);
+    padding-bottom: var(--safe-bottom);
     /* Subtle paper grain — pure CSS, no image asset. */
     background-image: radial-gradient(
         circle at 20% 0%,

@@ -10,6 +10,7 @@ import { QrCodeOverlay } from "../console/overlays/QrCodeOverlay";
 import { T, accent } from "../console/tokens";
 import { joinRecipes, type JoinedRecipe } from "../data/derive";
 import { useStore } from "../store/useStore";
+import { useViewport } from "../util/useViewport";
 
 type HostMode = "vercel" | "caddy";
 
@@ -32,6 +33,7 @@ export function Menu() {
   const [lastResult, setLastResult] = useState<{ url: string; count: number } | null>(null);
   const [publishError, setPublishError] = useState<string | null>(null);
   const [qrOpen, setQrOpen] = useState(false);
+  const { isMobile } = useViewport();
   const guestUrl = lastResult?.url ?? "https://menu.thebackbar.house";
 
   // Seed selection: any recipe already flagged is_published, else the first 7 makeable.
@@ -72,16 +74,25 @@ export function Menu() {
     .toUpperCase();
 
   return (
-    <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: isMobile ? "column" : "row",
+        flex: 1,
+        minHeight: 0,
+        overflow: isMobile ? "auto" : "hidden",
+      }}
+    >
       <div
         style={{
-          width: 440,
+          width: isMobile ? "auto" : 440,
           padding: "18px 18px",
-          borderRight: `1px solid ${T.hairline}`,
+          borderRight: isMobile ? "none" : `1px solid ${T.hairline}`,
+          borderBottom: isMobile ? `1px solid ${T.hairline}` : "none",
           display: "flex",
           flexDirection: "column",
           gap: 14,
-          overflow: "auto",
+          overflow: isMobile ? "visible" : "auto",
           flexShrink: 0,
         }}
       >

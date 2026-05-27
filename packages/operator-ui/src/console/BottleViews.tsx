@@ -651,14 +651,26 @@ export function BottleGridView({
   bottles,
   accent,
   onPick,
+  columns,
 }: {
   bottles: DecoratedBottle[];
   accent: string;
   onPick?(b: DecoratedBottle): void;
+  /** Override the grid column count — defaults to 5 (desktop). Use 2 on
+   *  mobile so each tile keeps a tappable footprint. */
+  columns?: number;
 }) {
   const groups = groupByCat(bottles);
+  const cols = columns ?? 5;
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8, paddingBottom: 24 }}>
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+        gap: 8,
+        paddingBottom: 24,
+      }}
+    >
       {groups.map((g) => {
         const avg = Math.round((g.bottles.reduce((s, b) => s + b.pct, 0) / g.bottles.length) * 100);
         return (

@@ -9,6 +9,7 @@ import { PageHead } from "../console/Chrome";
 import { T, accent } from "../console/tokens";
 import { catOf } from "../data/derive";
 import { store, useStore } from "../store/useStore";
+import { useViewport } from "../util/useViewport";
 
 interface Props {
   onAddProduct?(): void;
@@ -23,6 +24,7 @@ export function Catalog({ onAddProduct, onEditProduct, onDuplicateProduct, onPic
   const products = useStore((s) => s.products);
   const bottles = useStore((s) => s.bottles);
   const categoryRegistry = useStore((s) => s.categories);
+  const { isMobile } = useViewport();
   const A = accent(tweaks.accent).primary;
 
   const bottleCountByProduct = useMemo(() => {
@@ -54,14 +56,23 @@ export function Catalog({ onAddProduct, onEditProduct, onDuplicateProduct, onPic
   );
 
   return (
-    <div style={{ display: "flex", flex: 1, minHeight: 0, position: "relative", zIndex: 1 }}>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: isMobile ? "column" : "row",
+        flex: 1,
+        minHeight: 0,
+        position: "relative",
+        zIndex: 1,
+      }}
+    >
       <aside
         style={{
           width: 220,
           borderRight: `1px solid ${T.hairline}`,
           background: T.surface,
           flexShrink: 0,
-          display: "flex",
+          display: isMobile ? "none" : "flex",
           flexDirection: "column",
         }}
       >
@@ -119,7 +130,8 @@ export function Catalog({ onAddProduct, onEditProduct, onDuplicateProduct, onPic
                   fontFamily: T.mono,
                   fontSize: 11,
                   padding: "4px 10px",
-                  width: 200,
+                  width: isMobile ? "100%" : 200,
+                  flex: isMobile ? "1 1 100%" : undefined,
                   outline: "none",
                   letterSpacing: "0.04em",
                 }}
@@ -131,13 +143,161 @@ export function Catalog({ onAddProduct, onEditProduct, onDuplicateProduct, onPic
           }
         />
 
-        <div style={{ flex: 1, minHeight: 0, padding: "0 16px" }}>
+        {isMobile ? (
+          <div
+            style={{
+              display: "flex",
+              gap: 6,
+              overflowX: "auto",
+              padding: "8px 16px 4px",
+              borderBottom: `1px solid ${T.hairline}`,
+              scrollbarWidth: "none",
+            }}
+          >
+            {(["all", ...categories] as const).map((id) => {
+              const cat = id === "all" ? { id: "all", label: "All", hue: 200 } : catOf(id);
+              const count =
+                id === "all" ? products.length : products.filter((p) => p.category === id).length;
+              const on = activeCat === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setActiveCat(id)}
+                  style={{
+                    flexShrink: 0,
+                    padding: "8px 12px",
+                    background: on ? T.surface2 : "transparent",
+                    border: `1px solid ${on ? `hsl(${cat.hue} 60% 55%)` : T.hairline2}`,
+                    color: on ? T.ink : T.inkDim,
+                    fontFamily: T.body,
+                    fontSize: 12,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  {id !== "all" ? (
+                    <span style={{ width: 6, height: 6, background: `hsl(${cat.hue} 60% 55%)` }} />
+                  ) : null}
+                  <span>{cat.label}</span>
+                  <span style={{ fontFamily: T.mono, fontSize: 10, color: T.inkDim }}>{count}</span>
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+
+        <div style={{ flex: 1, minHeight: 0, padding: isMobile ? "10px 14px" : "0 16px" }}>
           {products.length === 0 ? (
             <Cell padded>
               <div style={{ padding: "24px 8px", color: T.inkMuted, fontSize: 13 }}>
                 No products yet — reseed the bar via the SET tab.
               </div>
             </Cell>
+          ) : isMobile ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingBottom: 24 }}>
+              {filtered.map((p) => {
+                const cat = catOf(p.category);
+                const n = bottleCountByProduct.get(p.id) ?? 0;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => onPickProduct?.(p.id)}
+                    style={{
+                      textAlign: "left",
+                      background: T.surface,
+                      border: `1px solid ${T.hairline}`,
+                      padding: "12px 14px",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 6,
+                      cursor: "pointer",
+                      color: T.ink,
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                      <span
+                        style={{
+                          width: 6,
+                          height: 6,
+                          background: `hsl(${cat.hue} 60% 55%)`,
+                          flexShrink: 0,
+                        }}
+                      />
+                      <span style={{ fontSize: 15, fontWeight: 500, flex: 1, minWidth: 0 }}>
+                        {p.name}
+                      </span>
+                      {p.abv != null ? (
+                        <span style={{ fontFamily: T.mono, fontSize: 12, color: T.inkMuted }}>
+                          {Math.round(p.abv * 100)}%
+                        </span>
+                      ) : null}
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 12,
+                        fontFamily: T.mono,
+                        fontSize: 10,
+                        color: T.inkDim,
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      <span>{cat.label}{p.subcategory ? ` · ${p.subcategory}` : ""}</span>
+                      <span>{p.id}</span>
+                    </div>
+                    <div style={{ display: "flex", gap: 6, marginTop: 2 }}>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (n > 0) {
+                            store.filterBottlesByProduct(p.id);
+                            navigate("/bottles");
+                          }
+                        }}
+                        disabled={n === 0}
+                        style={{
+                          flex: 1,
+                          padding: "8px 10px",
+                          background: n > 0 ? T.cyanGlow : T.surface2,
+                          border: `1px solid ${n > 0 ? T.cyan : T.hairline2}`,
+                          color: n > 0 ? T.cyan : T.inkDim,
+                          fontFamily: T.mono,
+                          fontSize: 11,
+                          letterSpacing: "0.06em",
+                          cursor: n > 0 ? "pointer" : "not-allowed",
+                        }}
+                      >
+                        {n > 0 ? `→ ${n} bottle${n === 1 ? "" : "s"}` : "no bottles"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEditProduct?.(p.id);
+                        }}
+                        style={{
+                          padding: "8px 14px",
+                          background: "transparent",
+                          border: `1px solid ${T.hairline2}`,
+                          color: T.inkMuted,
+                          fontFamily: T.mono,
+                          fontSize: 11,
+                          letterSpacing: "0.06em",
+                          cursor: "pointer",
+                        }}
+                      >
+                        EDIT
+                      </button>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           ) : (
             <div style={{ border: `1px solid ${T.hairline}`, background: T.surface }}>
               <div

@@ -18,6 +18,7 @@ import { PageHead } from "../console/Chrome";
 import { T, accent } from "../console/tokens";
 import { Tooltip, TooltipRows } from "../console/Tooltip";
 import { useStore } from "../store/useStore";
+import { useViewport } from "../util/useViewport";
 
 type Period = "week" | "28d" | "quarter";
 
@@ -28,6 +29,7 @@ export function Pours() {
   const tweaks = useStore((s) => s.tweaks);
   const bottlesRaw = useStore((s) => s.bottles);
   const telemetry = useStore((s) => s.telemetry);
+  const { isMobile } = useViewport();
   const A = accent(tweaks.accent).primary;
 
   const [period, setPeriod] = useState<Period>("28d");
@@ -151,7 +153,14 @@ export function Pours() {
         }
       />
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, padding: "0 16px" }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4,1fr)",
+          gap: 10,
+          padding: "0 16px",
+        }}
+      >
         <Stat label="POURS" value={totals.pours.toString()} delta={`over ${PERIOD_DAYS[period]}d`} accent={A} />
         <Stat
           label="VOLUME"
@@ -303,7 +312,17 @@ export function Pours() {
         </Cell>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, height: 240, padding: "0 16px" }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr",
+          gap: 10,
+          // Height per chart panel — gives each one room on mobile too.
+          gridAutoRows: isMobile ? "240px" : undefined,
+          height: isMobile ? "auto" : 240,
+          padding: "0 16px",
+        }}
+      >
         <Cell title="BY WEEKDAY" right="pours">
           <div
             style={{

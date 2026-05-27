@@ -18,6 +18,7 @@ import {
 } from "../data/derive";
 import { buildAlerts } from "../data/synthetic";
 import { store, useStore } from "../store/useStore";
+import { useViewport } from "../util/useViewport";
 
 interface Props {
   onPickBottle?(b: DecoratedBottle): void;
@@ -33,6 +34,7 @@ export function Bottles({ onPickBottle, onAddBottle }: Props) {
   const nodes = useStore((s) => s.nodes);
   const telemetry = useStore((s) => s.telemetry);
   const bottlesFilter = useStore((s) => s.bottlesFilter);
+  const { isMobile } = useViewport();
   const A = accent(tweaks.accent).primary;
 
   const decorated = useMemo(() => bottlesRaw.map(decorateBottle), [bottlesRaw]);
@@ -93,14 +95,31 @@ export function Bottles({ onPickBottle, onAddBottle }: Props) {
     .map((n) => ({ device_id: n.device_id, label: n.label }));
   const alerts = buildAlerts(decorated, offlineNodes);
 
+  // The category bar shows up either as a desktop left rail OR as a horizontal
+  // pill scroller above the grid on mobile. Same data either way; the
+  // wrapping component decides the visual treatment.
+  const orderedCategories = [
+    ...categoriesList.filter((c) => allCategories.includes(c.id)),
+    ...allCategories.filter((id) => !categoriesList.some((c) => c.id === id)).map(catOf),
+  ];
+
   return (
-    <div style={{ display: "flex", flex: 1, minHeight: 0, position: "relative", zIndex: 1 }}>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: isMobile ? "column" : "row",
+        flex: 1,
+        minHeight: 0,
+        position: "relative",
+        zIndex: 1,
+      }}
+    >
       <aside
         style={{
           width: 200,
           borderRight: `1px solid ${T.hairline}`,
           background: T.surface,
-          display: "flex",
+          display: isMobile ? "none" : "flex",
           flexDirection: "column",
           flexShrink: 0,
         }}
@@ -242,7 +261,9 @@ export function Bottles({ onPickBottle, onAddBottle }: Props) {
                   fontFamily: T.mono,
                   fontSize: 11,
                   padding: "4px 10px",
-                  width: 160,
+                  width: isMobile ? "100%" : 160,
+                  minWidth: isMobile ? 0 : undefined,
+                  flex: isMobile ? "1 1 100%" : undefined,
                   outline: "none",
                   letterSpacing: "0.04em",
                 }}
@@ -276,7 +297,63 @@ export function Bottles({ onPickBottle, onAddBottle }: Props) {
           }
         />
 
-        <div style={{ flex: 1, minHeight: 0, padding: "0 16px" }}>
+        {isMobile && orderedCategories.length > 0 ? (
+          <div
+            style={{
+              display: "flex",
+              gap: 6,
+              overflowX: "auto",
+              padding: "8px 16px 4px",
+              borderBottom: `1px solid ${T.hairline}`,
+              scrollbarWidth: "none",
+            }}
+            // hide native scrollbar on webkit (CSS modules would be cleaner;
+            // inline is fine here since this is a one-shot scroller)
+          >
+            {orderedCategories.map((cat) => {
+              const list = decorated.filter((b) => b.category === cat.id);
+              if (!list.length) return null;
+              const low = list.filter((b) => b.low).length;
+              const on = activeCatsCurrent.has(cat.id);
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => toggleCat(cat.id)}
+                  style={{
+                    flexShrink: 0,
+                    padding: "8px 12px",
+                    background: on ? T.surface2 : "transparent",
+                    border: `1px solid ${on ? `hsl(${cat.hue} 60% 55%)` : T.hairline2}`,
+                    color: on ? T.ink : T.inkDim,
+                    fontFamily: T.body,
+                    fontSize: 12,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  <span
+                    style={{
+                      width: 6,
+                      height: 6,
+                      background: `hsl(${cat.hue} 60% 55%)`,
+                      opacity: on ? 1 : 0.5,
+                    }}
+                  />
+                  <span>{cat.label}</span>
+                  <span style={{ fontFamily: T.mono, fontSize: 10, color: low ? T.amber : T.inkDim }}>
+                    {list.length}
+                    {low ? ` ·${low}!` : ""}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+
+        <div style={{ flex: 1, minHeight: 0, padding: isMobile ? "10px 14px" : "0 16px" }}>
           {filtered.length === 0 ? (
             <Cell padded>
               <div style={{ padding: "24px 8px", color: T.inkMuted, fontSize: 13 }}>
@@ -284,7 +361,12 @@ export function Bottles({ onPickBottle, onAddBottle }: Props) {
               </div>
             </Cell>
           ) : view === "grid" ? (
-            <BottleGridView bottles={filtered} accent={A} onPick={onPickBottle} />
+            <BottleGridView
+              bottles={filtered}
+              accent={A}
+              onPick={onPickBottle}
+              columns={isMobile ? 2 : undefined}
+            />
           ) : view === "ribbon" ? (
             <BottleRibbonView bottles={filtered} accent={A} onPick={onPickBottle} />
           ) : (
@@ -298,7 +380,7 @@ export function Bottles({ onPickBottle, onAddBottle }: Props) {
           width: 260,
           borderLeft: `1px solid ${T.hairline}`,
           background: T.surface,
-          display: "flex",
+          display: isMobile ? "none" : "flex",
           flexDirection: "column",
           flexShrink: 0,
         }}

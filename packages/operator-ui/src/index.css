@@ -18,18 +18,6 @@
     height: 100%;
     overflow: hidden;
   }
-  /* Mobile: let the page scroll naturally and account for the soft-keyboard +
-     URL bar instead of locking the body. The app shell still pins TopBar +
-     BottomNav via fixed positioning. */
-  @media (max-width: 767px) {
-    html,
-    body,
-    #root {
-      height: auto;
-      min-height: var(--app-vh);
-      overflow: visible;
-    }
-  }
   html,
   body {
     background: #0a0c0f;
