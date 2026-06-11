@@ -99,6 +99,38 @@ export const ProductLookupResult = z.object({
 export type ProductLookupResult = z.infer<typeof ProductLookupResult>;
 
 /**
+ * Vision-extracted bottle for bulk inventory import (spec ai-engine.md §7).
+ *
+ * Vision fields (filled by detection model from what is visible):
+ *   display_name   — brand + expression text as read from the label
+ *   expression     — specific version/expression (e.g. "12 Year"); null if not shown
+ *   fill_observed  — coarse visual fill bucket; null if fill level is not visible
+ *   confidence     — per-detection confidence 0–1
+ *
+ * Grounding placeholders (null here; filled by a subsequent grounding step):
+ *   brand / distillery / category / size_ml / abv
+ */
+export const ExtractedBottle = z.object({
+  display_name: z.string().min(1),
+  expression: z.string().nullable(),
+  fill_observed: z
+    .enum(["full", "three-quarter", "half", "quarter", "empty"])
+    .nullable(),
+  confidence: z.number().min(0).max(1),
+  brand: z.string().nullable().default(null),
+  distillery: z.string().nullable().default(null),
+  category: z.string().nullable().default(null),
+  size_ml: z.number().positive().nullable().default(null),
+  abv: z.number().min(0).max(1).nullable().default(null),
+});
+export type ExtractedBottle = z.infer<typeof ExtractedBottle>;
+
+export const InventoryImportResult = z.object({
+  bottles: z.array(ExtractedBottle),
+});
+export type InventoryImportResult = z.infer<typeof InventoryImportResult>;
+
+/**
  * Vision-extracted recipe (spec ai-engine.md §6). Ingredients arrive as raw
  * labels — `import-photo.ts` then fuzzy-matches each label to an existing
  * product, returning the resolved recipe draft + unresolved labels.
