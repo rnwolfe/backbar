@@ -55,6 +55,21 @@ export const PhotoImportRequest = z.object({
 });
 export type PhotoImportRequest = z.infer<typeof PhotoImportRequest>;
 
+export const BulkPhotoImportRequest = z.object({
+  images: z
+    .array(
+      z.object({
+        image_b64: z.string().min(1),
+        media_type: z.string().min(1),
+        /** Optional client-provided identifier for tracking per-image results. */
+        id: z.string().optional(),
+      }),
+    )
+    .min(1)
+    .max(20),
+});
+export type BulkPhotoImportRequest = z.infer<typeof BulkPhotoImportRequest>;
+
 /**
  * /ai/product-lookup — extract metadata for the Add Product modal so the
  * operator confirms+edits rather than typing everything from scratch.
