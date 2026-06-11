@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { coverage } from "@backbar/core";
+import { coverage, type Product } from "@backbar/core";
 import {
   products as productsRepo,
   recipes as recipesRepo,
@@ -13,7 +13,13 @@ import { importInventory } from "../ai/import-inventory";
 import { groundBatch } from "../ai/ground-inventory";
 import { lookupProduct } from "../ai/product-lookup";
 import { buildRefSet } from "../ai/prompts";
-import { IdeateRequest, PhotoImportRequest, ProductLookupRequest } from "../ai/schema";
+import {
+  BulkPhotoImportRequest,
+  type GroundedBottle,
+  IdeateRequest,
+  PhotoImportRequest,
+  ProductLookupRequest,
+} from "../ai/schema";
 
 /**
  * AI routes (spec ai-engine.md §5).
@@ -148,7 +154,7 @@ export function aiRouter(deps: Deps, opts: { hasGateway: boolean } = { hasGatewa
  * fields rather than crashing the batch.
  */
 export function inventoryImportRouter(
-  _deps: Deps,
+  deps: Deps,
   opts: { hasGateway: boolean } = { hasGateway: false },
 ) {
   const r = new Hono();
@@ -179,7 +185,150 @@ export function inventoryImportRouter(
     });
   });
 
+  /**
+   * POST /inventory/import-photo-bulk — import from multiple shelf photos at once.
+   *
+   * Processes each image independently through the same two-step pipeline as
+   * /import-photo (vision detection → grounding). Results are flattened into a
+   * single candidate list tagged with image_index/image_id. Each candidate is
+   * reconciled against the existing product catalog:
+   *   "existing-product" → product already cataloged; operator adds a bottle.
+   *   "new-product"      → no catalog match; operator creates product first.
+   *
+   * Per-image failures are isolated — one bad image returns an error entry in
+   * per_image[] but does not fail the whole batch.
+   */
+  r.post("/import-photo-bulk", async (c) => {
+    const parsed = await parseBody(c, BulkPhotoImportRequest);
+    if (parsed.error) return parsed.response;
+
+    if (!opts.hasGateway) {
+      return err(c, 503, "ai-disabled", "AI_GATEWAY_API_KEY not set");
+    }
+
+    const products = productsRepo(deps.db).list();
+
+    const settled = await Promise.allSettled(
+      parsed.data.images.map(async (img, idx) => {
+        const detection = await importInventory(
+          { image_b64: img.image_b64, media_type: img.media_type },
+          {},
+        );
+        if (!detection.ok) {
+          return {
+            image_index: idx,
+            image_id: img.id,
+            status: "failed" as const,
+            error:
+              detection.reason === "no-model"
+                ? "no gateway model available"
+                : (detection.detail ?? "extract-failed"),
+          };
+        }
+        const bottles = await groundBatch(detection.bottles);
+        return {
+          image_index: idx,
+          image_id: img.id,
+          status: "ok" as const,
+          detection_attempts: detection.attempts,
+          bottles,
+        };
+      }),
+    );
+
+    const candidates: unknown[] = [];
+    const per_image: unknown[] = [];
+
+    for (const result of settled) {
+      // inner async never rejects (errors are caught above), but guard for safety
+      if (result.status === "rejected") continue;
+      const r = result.value;
+      const imageId = r.image_id !== undefined ? { image_id: r.image_id } : {};
+
+      if (r.status === "failed") {
+        per_image.push({ image_index: r.image_index, ...imageId, status: "failed", error: r.error });
+      } else {
+        per_image.push({
+          image_index: r.image_index,
+          ...imageId,
+          status: "ok",
+          bottle_count: r.bottles.length,
+          detection_attempts: r.detection_attempts,
+        });
+        for (const bottle of r.bottles) {
+          const matchedId = reconcileCandidate(bottle, products);
+          candidates.push({
+            ...bottle,
+            image_index: r.image_index,
+            ...imageId,
+            reconciliation: matchedId ? "existing-product" : "new-product",
+            ...(matchedId ? { matched_product_id: matchedId } : {}),
+          });
+        }
+      }
+    }
+
+    return c.json({ candidates, per_image });
+  });
+
   return r;
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function normalizeLabel(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9\s-]/g, "").trim();
+}
+
+function tokenizeLabel(s: string): string[] {
+  return s.split(/[\s-]+/).filter(Boolean);
+}
+
+/**
+ * Reconcile a grounded bottle candidate against the product catalog.
+ * Returns the matched product ID ("existing-product") or null ("new-product").
+ *
+ * Strategy: fuzzy-match display_name (and optionally grounded brand) against
+ * product names using the same scoring approach as import-photo.ts.
+ * Threshold ≥40 to keep false-positive rate low — operator confirms anyway.
+ */
+function reconcileCandidate(candidate: GroundedBottle, products: Product[]): string | null {
+  const l = normalizeLabel(candidate.display_name);
+  if (!l) return null;
+  const tokens = tokenizeLabel(l);
+
+  let best: { id: string; score: number } | null = null;
+
+  for (const p of products) {
+    const name = normalizeLabel(p.name);
+    if (!name) continue;
+
+    if (name === l) return p.id;
+
+    if (l.includes(name) || name.includes(l)) {
+      const score = 80 - Math.abs(name.length - l.length);
+      if (!best || score > best.score) best = { id: p.id, score };
+    }
+
+    const nameTokens = tokenizeLabel(name);
+    const overlap = nameTokens.filter((t) => t.length >= 3 && tokens.includes(t)).length;
+    if (overlap > 0) {
+      const score = 50 + overlap * 5;
+      if (!best || score > best.score) best = { id: p.id, score };
+    }
+
+    if (candidate.brand) {
+      const brand = normalizeLabel(candidate.brand);
+      if (brand && (name.includes(brand) || brand.includes(name))) {
+        const score = 45;
+        if (!best || score > best.score) best = { id: p.id, score };
+      }
+    }
+  }
+
+  return best && best.score >= 40 ? best.id : null;
 }
 
 export function recipesPhotoImportRouter(
