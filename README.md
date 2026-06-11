@@ -214,6 +214,10 @@ keys, in roughly the order you'll care about them:
 | `MENU_SERVE_MODE`         | `live` (Caddy fronts `/guest/menu`) or `snapshot` (bake JSON for Vercel).       |
 | `GUEST_PUBLIC_URL`        | The URL guests visit. Surfaced in publish responses + share links.              |
 | `VITE_GUEST_BASE_URL`     | Override the guest origin baked into operator-UI share buttons.                 |
+| `INVENTORY_IMPORT_MODEL`  | Vision model for bar-photo bottle detection. Default: `openai/gpt-4o`.          |
+| `VISION_MODEL`            | Vision model for recipe photo import. Default: `anthropic/claude-sonnet-4`.     |
+| `IDEATE_MODEL`            | Model for recipe generation / riff. Default: `anthropic/claude-sonnet-4`.       |
+| `LOOKUP_MODEL`            | Model for product metadata enrichment. Default: `anthropic/claude-haiku-4-5`.   |
 
 Full reference in [`.env.example`](./.env.example).
 

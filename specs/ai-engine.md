@@ -16,6 +16,17 @@ const MODEL = gateway("anthropic/claude-sonnet-4");   // route via AI Gateway, n
 
 All AI calls go through the Gateway — model routing, observability, and spend live there. No provider SDK keys in the app.
 
+### Model defaults (all overridable via env var at runtime)
+
+| Function | Default model | Env override | Use case |
+|----------|--------------|--------------|----------|
+| `getDefaultModel()` | `anthropic/claude-sonnet-4` | `IDEATE_MODEL` | Recipe generation / riff |
+| `getVisionModel()` | `anthropic/claude-sonnet-4` | `VISION_MODEL` | Recipe photo import (OCR) |
+| `getInventoryImportModel()` | `openai/gpt-4o` | `INVENTORY_IMPORT_MODEL` | Bar-photo bulk inventory import |
+| `getLookupModel()` | `anthropic/claude-haiku-4-5` | `LOOKUP_MODEL` | Product metadata enrichment |
+
+`openai/gpt-4o` is the evaluated default for inventory import — fastest (2.3s), most accurate on multi-bottle bar shelves (90/100 overall). See `specs/model-evaluation-vision.md` for the full evaluation.
+
 ---
 
 ## 2. Output schema — `ai/schema.ts`
@@ -132,6 +143,37 @@ Then **map ingredient labels → existing products** (fuzzy match on name/catego
 { draft: Recipe, unresolved: string[] }   // unresolved labels need a product created or manual bind
 ```
 This is a **draft for human confirmation** (`POST /recipes/:id/confirm`), never auto-saved. On save: `source:'photo-import'`, `provenance:'photo:<sha256(image)>'`. Resolved lines become `ref_type:'product'`; unresolved stay `ref_type:'freeform'` with the label until the user creates the product.
+
+---
+
+## 7. Bulk inventory import from bar photos — `ai/import-inventory.ts`
+
+`POST /inventory/import-photo {image_b64, media_type}` — send a bar shelf photo; get back a list of detected bottles shaped to the `Product`/`Bottle` schema for operator review.
+
+**Batching advantage**: a single multi-bottle photo is ONE model call covering N products. The operator UI should encourage full-shelf photos over individual bottle shots.
+
+```ts
+const InventoryImport = z.object({
+  bottles: z.array(z.object({
+    product_name: z.string(),      // "Maker's Mark Bourbon Whisky"
+    brand: z.string().nullable(),
+    category: z.string().nullable(),
+    subcategory: z.string().nullable(),
+    fill_level_pct: z.number().min(0).max(100).nullable(),
+    fill_label: z.enum(["full","three-quarter","half","quarter","empty"]).nullable(),
+    abv_pct: z.number().nullable(),
+    confidence: z.number().min(0).max(1),
+  })),
+  bottle_count: z.number().int(),
+  scene_notes: z.string().nullable(),
+});
+```
+
+Model: `getInventoryImportModel()` (default `openai/gpt-4o`, override via `INVENTORY_IMPORT_MODEL`).
+
+Result is a **draft for operator confirmation** — never auto-committed. Each detected bottle is matched against existing catalog products (fuzzy, same scoring as recipe photo import) or surfaced as an "add product" prompt.
+
+See `specs/model-evaluation-vision.md` for the evaluation that selected `openai/gpt-4o` as the default.
 
 ---
 
