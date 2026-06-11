@@ -212,6 +212,7 @@ export function App() {
           fontFamily: T.body,
           display: "flex",
           flexDirection: "column",
+          overflow: "hidden",
         }}
       >
         <GridBg />
@@ -233,6 +234,7 @@ export function App() {
           style={{
             flex: 1,
             minHeight: 0,
+            minWidth: 0,
             display: "flex",
             position: "relative",
             zIndex: 1,
