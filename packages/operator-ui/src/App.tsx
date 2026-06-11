@@ -18,6 +18,7 @@ import {
   type RecipeOverlayMode,
 } from "./console/overlays/forms/AddRecipeOverlay";
 import { ImportPhotoOverlay } from "./console/overlays/forms/ImportPhotoOverlay";
+import { BulkImportInventoryOverlay } from "./console/overlays/forms/BulkImportInventoryOverlay";
 import type { Bottle, Product, Recipe } from "@backbar/core";
 import { api, type ProductTagRow } from "./api/client";
 import { RecipeDetailOverlay } from "./console/overlays/RecipeDetail";
@@ -115,6 +116,7 @@ export function App() {
     { mode: RecipeOverlayMode; initial?: Recipe } | null
   >(null);
   const [importPhotoOpen, setImportPhotoOpen] = useState(false);
+  const [bulkImportOpen, setBulkImportOpen] = useState(false);
 
   const accentColor = accent(tweaks.accent).primary;
 
@@ -248,6 +250,7 @@ export function App() {
                 <Bottles
                   onPickBottle={openBottle}
                   onAddBottle={() => setBottleOverlay({ mode: "create" })}
+                  onBulkImportPhoto={() => setBulkImportOpen(true)}
                 />
               }
             />
@@ -398,6 +401,9 @@ export function App() {
         {importPhotoOpen ? (
           <ImportPhotoOverlay onClose={() => setImportPhotoOpen(false)} onToast={pushToast} />
         ) : null}
+        {bulkImportOpen ? (
+          <BulkImportInventoryOverlay onClose={() => setBulkImportOpen(false)} onToast={pushToast} />
+        ) : null}
 
         <Palette
           open={paletteOpen}
@@ -405,6 +411,7 @@ export function App() {
           onNav={(v) => nav(v)}
           onPickRecipe={(r) => openRecipe(r)}
           onToast={pushToast}
+          onBulkImportInventory={() => setBulkImportOpen(true)}
         />
 
         {/* TweaksPanel is desktop-only; the mobile chrome doesn't have room
