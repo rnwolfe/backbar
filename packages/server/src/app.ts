@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import type { Deps } from "./deps";
 import { adminRouter } from "./routes/admin";
-import { aiRouter, recipesPhotoImportRouter } from "./routes/ai";
+import { aiRouter, inventoryImportRouter, recipesPhotoImportRouter } from "./routes/ai";
 import { bottlesRouter } from "./routes/bottles";
 import { categoriesRouter } from "./routes/categories";
 import { flagsRouter } from "./routes/flags";
@@ -51,6 +51,7 @@ export function buildApp(deps: Deps) {
   app.route("/shopping-list", shoppingRouter(deps));
   app.route("/telemetry", telemetryRouter(deps));
   app.route("/ai", aiRouter(deps, { hasGateway }));
+  app.route("/inventory", inventoryImportRouter(deps, { hasGateway }));
   app.route("/admin", adminRouter(deps));
   app.route("/guest", menuRouter(deps)); // exposes /guest/menu + /guest/menu/publish
   // Public read-only share endpoints — recipe / product / bottle cards.

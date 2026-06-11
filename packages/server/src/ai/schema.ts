@@ -131,6 +131,47 @@ export const InventoryImportResult = z.object({
 export type InventoryImportResult = z.infer<typeof InventoryImportResult>;
 
 /**
+ * Grounding step: authoritative metadata resolved from a bottle's observed
+ * display_name + expression. Filled by the Haiku lookup model; every field
+ * is nullable — the model returns null when not confident rather than guessing.
+ */
+export const InventoryGroundingResult = z.object({
+  brand: z.string().nullable(),
+  distillery: z.string().nullable(),
+  /** Backbar category slug (e.g. "bourbon", "gin", "rum"). */
+  category: z.string().nullable(),
+  /** Standard bottle size in ml (e.g. 750, 1000, 375). */
+  size_ml: z.number().positive().nullable(),
+  /** ABV as decimal 0..1 (40% = 0.40). */
+  abv: z.number().min(0).max(1).nullable(),
+  /** ISO 3166-1 alpha-2 (e.g. "US", "GB", "JM"). */
+  origin_country: z.string().length(2).nullable(),
+  /** Model's confidence in the grounded fields overall. */
+  confidence: z.enum(["high", "medium", "low"]),
+  /** Short explanation of sources / caveats. */
+  rationale: z.string().nullable(),
+});
+export type InventoryGroundingResult = z.infer<typeof InventoryGroundingResult>;
+
+/**
+ * An `ExtractedBottle` with grounded product fields filled in (or null on
+ * failure/uncertainty) plus provenance tracking.
+ */
+export const GroundedBottle = ExtractedBottle.extend({
+  brand: z.string().nullable(),
+  distillery: z.string().nullable(),
+  category: z.string().nullable(),
+  size_ml: z.number().positive().nullable(),
+  abv: z.number().min(0).max(1).nullable(),
+  origin_country: z.string().nullable(),
+  /** Model ID that produced the grounded fields. Null when grounding was skipped. */
+  grounding_source: z.string().nullable(),
+  grounding_confidence: z.enum(["high", "medium", "low"]).nullable(),
+  grounding_rationale: z.string().nullable(),
+});
+export type GroundedBottle = z.infer<typeof GroundedBottle>;
+
+/**
  * Vision-extracted recipe (spec ai-engine.md §6). Ingredients arrive as raw
  * labels — `import-photo.ts` then fuzzy-matches each label to an existing
  * product, returning the resolved recipe draft + unresolved labels.

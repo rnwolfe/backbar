@@ -9,6 +9,8 @@ import { err, parseBody } from "../errors";
 import { loadInventory } from "../makeable";
 import { ideate } from "../ai/ideate";
 import { importPhoto } from "../ai/import-photo";
+import { importInventory } from "../ai/import-inventory";
+import { groundBatch } from "../ai/ground-inventory";
 import { lookupProduct } from "../ai/product-lookup";
 import { buildRefSet } from "../ai/prompts";
 import { IdeateRequest, PhotoImportRequest, ProductLookupRequest } from "../ai/schema";
@@ -127,6 +129,54 @@ export function aiRouter(deps: Deps, opts: { hasGateway: boolean } = { hasGatewa
       return err(c, 503, "ai-disabled", "no gateway model available");
     }
     return err(c, 502, "extract-failed", result.detail);
+  });
+
+  return r;
+}
+
+/**
+ * POST /inventory/import-photo — bulk import from a bar shelf photo.
+ *
+ * Two-step pipeline:
+ *   1. Vision model (gpt-4o) extracts every visible bottle (display_name,
+ *      expression, fill_observed, confidence). Grounding slots remain null.
+ *   2. Lookup model (Haiku) grounds each candidate in parallel, resolving
+ *      brand/distillery/category/ABV/size/origin with provenance.
+ *
+ * Returns a draft list for operator review — never auto-committed.
+ * Vision failure → 502; grounding failures per-bottle degrade to null
+ * fields rather than crashing the batch.
+ */
+export function inventoryImportRouter(
+  _deps: Deps,
+  opts: { hasGateway: boolean } = { hasGateway: false },
+) {
+  const r = new Hono();
+
+  r.post("/import-photo", async (c) => {
+    const parsed = await parseBody(c, PhotoImportRequest);
+    if (parsed.error) return parsed.response;
+
+    if (!opts.hasGateway) {
+      return err(c, 503, "ai-disabled", "AI_GATEWAY_API_KEY not set");
+    }
+
+    // Step 1 — vision detection
+    const detection = await importInventory(parsed.data, {});
+    if (!detection.ok) {
+      if (detection.reason === "no-model") {
+        return err(c, 503, "ai-disabled", "no gateway model available");
+      }
+      return err(c, 502, "extract-failed", detection.detail);
+    }
+
+    // Step 2 — grounded lookup (parallel; per-bottle failures degrade, never crash)
+    const bottles = await groundBatch(detection.bottles);
+
+    return c.json({
+      bottles,
+      detection_attempts: detection.attempts,
+    });
   });
 
   return r;
