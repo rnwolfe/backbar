@@ -62,6 +62,7 @@ export function Catalog({ onAddProduct, onEditProduct, onDuplicateProduct, onPic
         flexDirection: isMobile ? "column" : "row",
         flex: 1,
         minHeight: 0,
+        minWidth: 0,
         position: "relative",
         zIndex: 1,
       }}
@@ -107,7 +108,8 @@ export function Catalog({ onAddProduct, onEditProduct, onDuplicateProduct, onPic
         style={{
           flex: 1,
           padding: "10px 14px",
-          overflow: "auto",
+          overflowY: "auto",
+          overflowX: "hidden",
           display: "flex",
           flexDirection: "column",
           minWidth: 0,
