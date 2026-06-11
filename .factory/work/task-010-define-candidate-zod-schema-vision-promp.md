@@ -1,11 +1,11 @@
 ---
 id: task-010
 title: Define candidate Zod schema + vision prompt (observe, don't invent)
-status: ready
+status: done
 priority: med
 estimate: medium
 created: 2026-06-11T08:01:57.953Z
-updated: 2026-06-11T08:01:57.953Z
+updated: 2026-06-11T08:26:19.921Z
 labels:
   - feature-plan-task
 ---
@@ -21,4 +21,5 @@ labels:
 ## Notes
 
 Emitted by feature plan gq2ogqj7: "Support bulk import of inventory from images (multiple at once). Each image should be given to a visual reasoning capable model with the intent of identifying any bottles, extracting the specific bottle, shaping it to match our schemas, etc."
+
 
