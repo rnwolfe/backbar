@@ -196,7 +196,7 @@ export function BulkImportInventoryOverlay({ onClose, onToast }: Props) {
           product_id = id;
         }
 
-        await api.createBottle({
+        const created = await api.createBottle({
           product_id,
           full_ml,
           level_ml,
@@ -204,6 +204,9 @@ export function BulkImportInventoryOverlay({ onClose, onToast }: Props) {
           tracked: false,
           slot: null,
         });
+        if (c.fill !== "") {
+          await api.ingestManualReading({ bottle_id: created.id, level_ml });
+        }
         ok++;
       } catch {
         fail++;
