@@ -152,6 +152,19 @@ const builtins: Command[] = [
     },
   },
 
+  // ─── inventory bulk import ───────────────────────────────────────────────
+  {
+    id: "inventory.bulk-import-photo",
+    title: "Bulk import bottles from photos…",
+    group: "inventory",
+    keywords: ["photo", "shelf", "scan", "image", "vision", "ai", "import", "bulk"],
+    icon: "📷",
+    run: (ctx) => {
+      ctx.palette.close();
+      ctx.palette.openBulkImportInventory?.();
+    },
+  },
+
   // ─── AI ─────────────────────────────────────────────────────────────────
   {
     id: "ai.ideate",

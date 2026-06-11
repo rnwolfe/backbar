@@ -41,9 +41,10 @@ interface Props {
   /** Deep-link to a specific recipe (opens RecipeDetail overlay via URL). */
   onPickRecipe?(recipe: Recipe): void;
   onToast(text: string): void;
+  onBulkImportInventory?(): void;
 }
 
-export function Palette({ open, onClose, onNav, onPickRecipe, onToast }: Props) {
+export function Palette({ open, onClose, onNav, onPickRecipe, onToast, onBulkImportInventory }: Props) {
   const products = useStore((s) => s.products);
   const bottles = useStore((s) => s.bottles);
   const recipes = useStore((s) => s.recipes);
@@ -169,6 +170,7 @@ export function Palette({ open, onClose, onNav, onPickRecipe, onToast }: Props) 
       close: onClose,
       pushPourConfirm: (recipe) => setScreen({ kind: "pour-confirm", recipe }),
       toast: onToast,
+      openBulkImportInventory: onBulkImportInventory,
     },
   };
 

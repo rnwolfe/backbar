@@ -23,11 +23,12 @@ import { useViewport } from "../util/useViewport";
 interface Props {
   onPickBottle?(b: DecoratedBottle): void;
   onAddBottle?(): void;
+  onBulkImportPhoto?(): void;
 }
 
 type View = "grid" | "ribbon" | "list";
 
-export function Bottles({ onPickBottle, onAddBottle }: Props) {
+export function Bottles({ onPickBottle, onAddBottle, onBulkImportPhoto }: Props) {
   const tweaks = useStore((s) => s.tweaks);
   const bottlesRaw = useStore((s) => s.bottles);
   const categoriesList = useStore((s) => s.categories);
@@ -290,6 +291,9 @@ export function Bottles({ onPickBottle, onAddBottle }: Props) {
                   LIST
                 </Pill>
               </div>
+              <Pill color={A} onClick={onBulkImportPhoto} title="bulk import bottles from shelf photos">
+                📷 BULK
+              </Pill>
               <Pill color={A} onClick={onAddBottle} title="add a new bottle to inventory">
                 + ADD
               </Pill>

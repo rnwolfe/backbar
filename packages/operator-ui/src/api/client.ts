@@ -243,6 +243,40 @@ export interface AdminReseedResponse {
   };
 }
 
+export interface BulkImportCandidate {
+  display_name: string;
+  expression: string | null;
+  fill_observed: "full" | "three-quarter" | "half" | "quarter" | "empty" | null;
+  confidence: number;
+  brand: string | null;
+  distillery: string | null;
+  category: string | null;
+  size_ml: number | null;
+  abv: number | null;
+  origin_country: string | null;
+  grounding_source: string | null;
+  grounding_confidence: "high" | "medium" | "low" | null;
+  grounding_rationale: string | null;
+  image_index: number;
+  image_id?: string;
+  reconciliation: "existing-product" | "new-product";
+  matched_product_id?: string;
+}
+
+export interface BulkImportPerImage {
+  image_index: number;
+  image_id?: string;
+  status: "ok" | "failed";
+  bottle_count?: number;
+  detection_attempts?: number;
+  error?: string;
+}
+
+export interface BulkImportResponse {
+  candidates: BulkImportCandidate[];
+  per_image: BulkImportPerImage[];
+}
+
 /**
  * In dev, Vite proxies `/api/*` → `http://localhost:8787`. In prod (when the
  * UI is served by the same Bun process or a static host) point `VITE_API_BASE`
@@ -344,6 +378,11 @@ export const api = {
     req<Bottle>("/bottles", { method: "POST", body: JSON.stringify(bottle) }),
   importRecipePhoto: (body: { image_b64: string; media_type: string }) =>
     req<RecipePhotoImportResponse>("/recipes/import-photo", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  importInventoryPhotoBulk: (body: { images: { image_b64: string; media_type: string; id?: string }[] }) =>
+    req<BulkImportResponse>("/inventory/import-photo-bulk", {
       method: "POST",
       body: JSON.stringify(body),
     }),
