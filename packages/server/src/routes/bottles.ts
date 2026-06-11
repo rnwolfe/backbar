@@ -142,8 +142,8 @@ export function bottlesRouter(deps: Deps) {
       price_cents: parsed.data.price_cents ?? null,
     });
     const created = bottlesRepo(deps.db).insert(bottle);
-    // Inventory changed — refresh makeable; no events here (no level change yet).
-    deps.makeable.recompute();
+    const { changed } = deps.makeable.recompute();
+    for (const ch of changed) deps.bus.emit({ type: "makeable.changed", ...ch });
     return c.json(created, 201);
   });
 

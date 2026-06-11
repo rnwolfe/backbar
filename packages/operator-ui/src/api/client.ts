@@ -376,6 +376,11 @@ export const api = {
     ),
   createBottle: (bottle: unknown) =>
     req<Bottle>("/bottles", { method: "POST", body: JSON.stringify(bottle) }),
+  ingestManualReading: (body: { bottle_id: string; level_ml: number }) =>
+    req<{ ok: boolean; reading_id: string; level_ml: number }>("/ingest/reading", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
   importRecipePhoto: (body: { image_b64: string; media_type: string }) =>
     req<RecipePhotoImportResponse>("/recipes/import-photo", {
       method: "POST",
