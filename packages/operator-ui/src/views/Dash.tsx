@@ -88,7 +88,8 @@ export function Dash({ onPickRecipe }: Props) {
     <div
       style={{
         padding: "14px 16px",
-        overflow: "auto",
+        overflowY: "auto",
+        overflowX: "hidden",
         flex: 1,
         display: "flex",
         flexDirection: "column",
@@ -101,15 +102,17 @@ export function Dash({ onPickRecipe }: Props) {
           justifyContent: "space-between",
           alignItems: "baseline",
           marginBottom: 14,
+          flexWrap: "wrap",
+          gap: 8,
         }}
       >
-        <div>
+        <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.01em" }}>Service Overview</div>
           <div style={{ fontSize: 11, color: T.inkMuted, fontFamily: T.mono, marginTop: 2 }}>
             {formatHeader(telemetry?.uptime_days)}
           </div>
         </div>
-        <div style={{ display: "flex", gap: 6 }}>
+        <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
           {(Object.keys(DASH_PERIOD_LABEL) as DashPeriod[]).map((p) => (
             <Pill key={p} color={A} active={period === p} onClick={() => setPeriod(p)}>
               {DASH_PERIOD_LABEL[p]}
@@ -348,7 +351,7 @@ export function Dash({ onPickRecipe }: Props) {
         </Cell>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginTop: 10, height: 200 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr", gap: 10, marginTop: 10, height: isMobile ? undefined : 200 }}>
         <Cell title="ONE BOTTLE AWAY" right={`${oneAway.length}`}>
           <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "auto" }}>
             {oneAway.length === 0 ? (

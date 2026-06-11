@@ -126,7 +126,8 @@ export function Pours() {
     <div
       style={{
         padding: "14px 16px",
-        overflow: "auto",
+        overflowY: "auto",
+        overflowX: "hidden",
         flex: 1,
         display: "flex",
         flexDirection: "column",
