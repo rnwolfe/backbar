@@ -5,9 +5,10 @@ status: ready
 priority: med
 estimate: small
 created: 2026-06-11T08:01:57.944Z
-updated: 2026-06-11T08:02:40.457Z
+updated: 2026-06-11T08:02:43.127Z
 labels:
   - feature-plan-task
+model: claude-opus-4-8
 ---
 
 ## Acceptance
@@ -21,6 +22,7 @@ labels:
 ## Notes
 
 Emitted by feature plan gq2ogqj7: "Support bulk import of inventory from images (multiple at once). Each image should be given to a visual reasoning capable model with the intent of identifying any bottles, extracting the specific bottle, shaping it to match our schemas, etc."
+
 
 
 
