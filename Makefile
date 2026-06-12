@@ -1,6 +1,6 @@
 # Factory quality interface: make typecheck, make lint, and make test
 # run as quality checks after every run (see .factory/quality.yaml).
-.PHONY: dev typecheck lint test
+.PHONY: dev typecheck lint test release release-dry-run
 
 dev:
 	bun run dev
@@ -13,3 +13,9 @@ lint:
 
 test:
 	bun test
+
+release:
+	bun run release
+
+release-dry-run:
+	bun run release:dry-run
