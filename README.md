@@ -174,6 +174,13 @@ The `core` package's tests are the first thing to run — every other
 package builds on its math. The full suite is ~260 tests across the
 workspace.
 
+### Releases
+
+The root `package.json` is the single project version source. Releases are
+cut locally from conventional commits with `bun run release` and documented
+in `CHANGELOG.md`; see [RELEASING.md](RELEASING.md) for the full workflow and
+recovery steps.
+
 ---
 
 ## Project layout

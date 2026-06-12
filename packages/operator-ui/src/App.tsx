@@ -37,6 +37,7 @@ import { Dash } from "./views/Dash";
 import { Menu } from "./views/Menu";
 import { Pours } from "./views/Pours";
 import { Recipes } from "./views/Recipes";
+import { WhatsNewModal } from "./release/WhatsNewModal";
 import { Settings } from "./views/Settings";
 import { Shelf } from "./views/Shelf";
 
@@ -420,6 +421,8 @@ export function App() {
             for a floating accessory. Operators get the same controls in
             Settings → Appearance. */}
         {viewport.isMobile ? null : <TweaksPanel />}
+
+        <WhatsNewModal />
 
         {viewport.isMobile ? (
           <BottomNav
