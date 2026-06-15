@@ -113,3 +113,5 @@ Bootstrap AI key once per host: `cp ~/.ai_gateway_api_key` value into `.env` as 
 7. `integrations/va-abc` — last, optional.
 
 Match phases in spec §8. P0+P1 ship with zero hardware.
+
+- **VISION.md** lives at `docs/internal/VISION.md` — read it before any non-trivial change. It states identity, principles, phases, and out-of-scope items.
