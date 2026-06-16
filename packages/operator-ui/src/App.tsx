@@ -38,6 +38,7 @@ import { Menu } from "./views/Menu";
 import { Pours } from "./views/Pours";
 import { Recipes } from "./views/Recipes";
 import { WhatsNewModal } from "./release/WhatsNewModal";
+import { TokenGate } from "./TokenGate";
 import { Settings } from "./views/Settings";
 import { Shelf } from "./views/Shelf";
 
@@ -423,6 +424,7 @@ export function App() {
         {viewport.isMobile ? null : <TweaksPanel />}
 
         <WhatsNewModal />
+        <TokenGate />
 
         {viewport.isMobile ? (
           <BottomNav

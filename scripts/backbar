@@ -1,0 +1,267 @@
+#!/usr/bin/env bash
+# backbar — production ops CLI for the Backbar home-bar OS.
+#
+# One entry point for deploying, releasing, announcing, and babysitting the
+# prod instance on svr01. Designed to run from inside the prod clone
+# (~/prod/backbar); `bootstrap` symlinks it to ~/.local/bin/backbar so you can
+# call it from anywhere.
+#
+#   backbar bootstrap        one-time: install deps, build, install+start service
+#   backbar deploy           pull origin/main, rebuild, restart (the everyday verb)
+#   backbar release [--dry-run]   cut a conventional-commit release + tag
+#   backbar announce         release → push → deploy (ships a "what's new" entry)
+#   backbar status           version, service state, health, exposed URLs
+#   backbar logs [-f]        journalctl for the service
+#   backbar start|stop|restart    systemctl wrappers
+#   backbar expose           publish backbar.* (operator) + menu.* (guest) URLs
+#   backbar token [--show|--rotate]   manage the operator access token
+#
+set -euo pipefail
+
+SERVICE="backbar-api"
+OPERATOR_SUB="backbar"
+GUEST_SUB="menu"
+DEFAULT_PORT="8788"
+
+# Resolve the repo root from this script's real location (follows the symlink).
+SELF="$(readlink -f "${BASH_SOURCE[0]}")"
+REPO_ROOT="$(cd "$(dirname "$SELF")/.." && pwd)"
+ENV_FILE="$REPO_ROOT/.env.local"
+
+c_blue=$'\033[34m'; c_green=$'\033[32m'; c_red=$'\033[31m'; c_dim=$'\033[2m'; c_off=$'\033[0m'
+say()  { echo "${c_blue}[backbar]${c_off} $*"; }
+ok()   { echo "${c_green}[backbar]${c_off} $*"; }
+err()  { echo "${c_red}[backbar]${c_off} $*" >&2; }
+
+# Locate a usable bun binary (the prod symlink may not exist on first run).
+_bun() {
+  if command -v bun >/dev/null 2>&1; then command -v bun
+  elif [ -x "$HOME/.local/bin/backbar-bun" ]; then echo "$HOME/.local/bin/backbar-bun"
+  elif [ -x "$HOME/.bun/bin/bun" ]; then echo "$HOME/.bun/bin/bun"
+  else err "Bun not found. Install: curl -fsSL https://bun.sh/install | bash"; exit 1; fi
+}
+
+_env_value() { # _env_value KEY → value from .env.local (empty if absent)
+  [ -f "$ENV_FILE" ] || { echo ""; return; }
+  grep -E "^$1=" "$ENV_FILE" 2>/dev/null | tail -1 | cut -d= -f2- || echo ""
+}
+
+_port() {
+  local p; p="$(_env_value PORT)"
+  echo "${p:-$DEFAULT_PORT}"
+}
+
+# Load .env.local into the environment for db migrate/seed (they read BACKBAR_DB).
+_load_env() {
+  if [ -f "$ENV_FILE" ]; then set -a; . "$ENV_FILE"; set +a; fi
+}
+
+_build_uis() {
+  local bun; bun="$(_bun)"
+  say "building operator-ui…"
+  (cd "$REPO_ROOT" && "$bun" run --filter @backbar/operator-ui build)
+  say "building guest-ui…"
+  (cd "$REPO_ROOT" && "$bun" run --filter @backbar/guest-ui build)
+}
+
+_migrate() {
+  local bun; bun="$(_bun)"
+  _load_env
+  say "migrating database…"
+  (cd "$REPO_ROOT" && "$bun" run --filter @backbar/db migrate)
+}
+
+_smoke() {
+  local port; port="$(_port)"
+  sleep 1
+  if systemctl --user is-active --quiet "$SERVICE" \
+     && curl -fsS "http://localhost:${port}/healthz" >/dev/null 2>&1; then
+    ok "$SERVICE healthy on :${port}"
+  else
+    err "$SERVICE is not healthy — check: journalctl --user -u $SERVICE -n 50"
+    return 1
+  fi
+}
+
+cmd_bootstrap() {
+  say "repo: $REPO_ROOT"
+  local bun; bun="$(_bun)"
+  ok "Bun: $bun ($("$bun" --version))"
+
+  # 1. Pin bun behind a stable symlink the systemd unit references.
+  mkdir -p "$HOME/.local/bin"
+  ln -sf "$bun" "$HOME/.local/bin/backbar-bun"
+  ln -sf "$REPO_ROOT/scripts/backbar" "$HOME/.local/bin/backbar"
+  ok "symlinked ~/.local/bin/{backbar-bun,backbar}"
+
+  # 2. Require .env.local (carries PORT, BACKBAR_TOKEN, BACKBAR_DB, secrets).
+  if [ ! -f "$ENV_FILE" ]; then
+    err "$ENV_FILE not found. Create it (see scripts/PROD.md) and re-run."
+    exit 1
+  fi
+  ok ".env.local present"
+
+  # 3. Install, migrate, seed, build.
+  say "bun install…"
+  (cd "$REPO_ROOT" && "$bun" install --frozen-lockfile)
+  _migrate
+  _load_env
+  say "seeding canon…"
+  (cd "$REPO_ROOT" && "$bun" run --filter @backbar/db seed) || say "seed skipped/idempotent"
+  _build_uis
+
+  # 4. Install + enable the systemd user unit.
+  mkdir -p "$HOME/.config/systemd/user"
+  cp "$REPO_ROOT/scripts/backbar-api.service" "$HOME/.config/systemd/user/$SERVICE.service"
+  systemctl --user daemon-reload
+  systemctl --user enable --now "$SERVICE"
+  ok "$SERVICE enabled + started"
+
+  # 5. Linger so it survives logout/reboot.
+  if loginctl show-user "$USER" 2>/dev/null | grep -q '^Linger=yes'; then
+    ok "linger already on — service survives reboot"
+  else
+    echo ""
+    echo "  ! linger is NOT enabled. Run once (as root):"
+    echo "        sudo loginctl enable-linger $USER"
+    echo ""
+  fi
+
+  _smoke
+  echo ""
+  ok "bootstrap done. Next: backbar expose   then   backbar status"
+}
+
+cmd_deploy() {
+  say "repo: $REPO_ROOT"
+  if ! git -C "$REPO_ROOT" diff-index --quiet HEAD --; then
+    err "working tree is dirty. Stash or commit first."
+    git -C "$REPO_ROOT" status --short >&2
+    exit 1
+  fi
+  local bun; bun="$(_bun)"
+  say "fetching origin/main…"
+  git -C "$REPO_ROOT" fetch --quiet origin main
+  git -C "$REPO_ROOT" reset --quiet --hard origin/main
+  ok "HEAD → $(git -C "$REPO_ROOT" rev-parse --short HEAD) — $(git -C "$REPO_ROOT" log -1 --pretty=%s)"
+  say "bun install…"
+  (cd "$REPO_ROOT" && "$bun" install --frozen-lockfile)
+  _migrate
+  _build_uis
+  say "restarting $SERVICE…"
+  systemctl --user restart "$SERVICE"
+  _smoke
+}
+
+cmd_release() {
+  local bun; bun="$(_bun)"
+  (cd "$REPO_ROOT" && "$bun" run scripts/release.ts "$@")
+  if [[ " $* " != *" --dry-run "* ]]; then
+    echo ""
+    say "release commit + tag created locally. Push with:"
+    echo "    git -C $REPO_ROOT push origin HEAD && git -C $REPO_ROOT push origin --tags"
+    say "or run 'backbar announce' to push + deploy in one step."
+  fi
+}
+
+cmd_announce() {
+  local bun; bun="$(_bun)"
+  say "cutting release…"
+  (cd "$REPO_ROOT" && "$bun" run scripts/release.ts)
+  say "pushing commit + tag…"
+  git -C "$REPO_ROOT" push origin HEAD
+  git -C "$REPO_ROOT" push origin --tags
+  ok "release pushed. Deploying so the What's New modal ships…"
+  cmd_deploy
+  ok "announced. Operators see the What's New entry on their next visit."
+}
+
+cmd_status() {
+  local port version active
+  port="$(_port)"
+  version="$(grep -E '"version"' "$REPO_ROOT/package.json" | head -1 | cut -d'"' -f4)"
+  active="$(systemctl --user is-active "$SERVICE" 2>/dev/null || echo inactive)"
+  echo "version : v${version}"
+  echo "service : ${active}  (port ${port})"
+  if curl -fsS "http://localhost:${port}/healthz" >/dev/null 2>&1; then
+    echo "health  : ok"
+  else
+    echo "health  : DOWN"
+  fi
+  echo "operator: https://${OPERATOR_SUB}.labs.rwolfe.io"
+  echo "menu    : https://${GUEST_SUB}.labs.rwolfe.io"
+  if command -v exposed >/dev/null 2>&1; then
+    echo "${c_dim}--- exposed ---${c_off}"
+    exposed 2>/dev/null | grep -E "${OPERATOR_SUB}\.|${GUEST_SUB}\." || echo "  (not exposed yet — run: backbar expose)"
+  fi
+}
+
+cmd_logs() {
+  if [ "$#" -eq 0 ]; then
+    journalctl --user -u "$SERVICE" -n 100 --no-pager
+  else
+    journalctl --user -u "$SERVICE" "$@"
+  fi
+}
+
+cmd_expose() {
+  command -v expose >/dev/null 2>&1 || { err "'expose' not on PATH (run on svr01)"; exit 1; }
+  local port; port="$(_port)"
+  local current; current="$(exposed 2>/dev/null || echo "")"
+  for sub in "$OPERATOR_SUB" "$GUEST_SUB"; do
+    if echo "$current" | grep -q "${sub}\.labs\.rwolfe\.io"; then
+      ok "${sub}.labs.rwolfe.io already exposed"
+    else
+      say "exposing ${sub} → :${port}…"
+      expose "$port" "$sub"
+    fi
+  done
+  ok "operator: https://${OPERATOR_SUB}.labs.rwolfe.io   menu: https://${GUEST_SUB}.labs.rwolfe.io"
+}
+
+cmd_token() {
+  local mode="${1:---show}"
+  case "$mode" in
+    --show|show)
+      local t; t="$(_env_value BACKBAR_TOKEN)"
+      [ -n "$t" ] && echo "$t" || { err "BACKBAR_TOKEN not set in $ENV_FILE"; exit 1; }
+      ;;
+    --rotate|rotate)
+      [ -f "$ENV_FILE" ] || { err "$ENV_FILE not found"; exit 1; }
+      local new; new="$(openssl rand -hex 24)"
+      if grep -qE '^BACKBAR_TOKEN=' "$ENV_FILE"; then
+        sed -i "s|^BACKBAR_TOKEN=.*|BACKBAR_TOKEN=${new}|" "$ENV_FILE"
+      else
+        echo "BACKBAR_TOKEN=${new}" >> "$ENV_FILE"
+      fi
+      ok "rotated BACKBAR_TOKEN — restarting service (existing operators must re-paste)"
+      systemctl --user restart "$SERVICE" 2>/dev/null || say "restart skipped (service not installed yet)"
+      echo "$new"
+      ;;
+    *) err "usage: backbar token [--show|--rotate]"; exit 1 ;;
+  esac
+}
+
+usage() {
+  # Print the leading comment block (stops at the first non-comment line).
+  awk 'NR==1{next} /^#/{sub(/^# ?/,""); print; next} {exit}' "$SELF"
+}
+
+main() {
+  local cmd="${1:-}"; shift || true
+  case "$cmd" in
+    bootstrap) cmd_bootstrap "$@" ;;
+    deploy)    cmd_deploy "$@" ;;
+    release)   cmd_release "$@" ;;
+    announce)  cmd_announce "$@" ;;
+    status)    cmd_status "$@" ;;
+    logs)      cmd_logs "$@" ;;
+    start|stop|restart) systemctl --user "$cmd" "$SERVICE" && ok "$cmd → $SERVICE" ;;
+    expose)    cmd_expose "$@" ;;
+    token)     cmd_token "$@" ;;
+    ""|help|-h|--help) usage ;;
+    *) err "unknown command: $cmd"; echo; usage; exit 1 ;;
+  esac
+}
+
+main "$@"

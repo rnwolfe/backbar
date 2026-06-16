@@ -1,0 +1,25 @@
+[Unit]
+Description=Backbar API — Bun + Hono, serves operator + guest UIs (host-routed)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/prod/backbar
+EnvironmentFile=%h/prod/backbar/.env.local
+Environment=NODE_ENV=production
+# The Bun server serves each built bundle by Host header: backbar.* → operator,
+# menu.* → guest. Paths are absolute so the unit doesn't depend on CWD.
+Environment=BACKBAR_OPERATOR_DIST=%h/prod/backbar/packages/operator-ui/dist
+Environment=BACKBAR_GUEST_DIST=%h/prod/backbar/packages/guest-ui/dist
+# Bun's path varies per host; `backbar bootstrap` symlinks the right binary to
+# %h/.local/bin/backbar-bun so this unit never needs per-host editing.
+ExecStart=%h/.local/bin/backbar-bun run packages/server/src/main.ts
+Restart=on-failure
+RestartSec=2
+# Logs via the journal — `journalctl --user -u backbar-api -f`.
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

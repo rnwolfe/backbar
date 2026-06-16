@@ -1,3 +1,5 @@
+import { getToken } from "../auth";
+
 export type LiveEvent =
   | { type: "hello"; ts: number }
   | {
@@ -28,10 +30,13 @@ export interface LiveClient {
 }
 
 function liveUrl(): string {
-  const env = import.meta.env.VITE_LIVE_URL;
-  if (env) return env;
-  const proto = location.protocol === "https:" ? "wss:" : "ws:";
-  return `${proto}//${location.host}/live`;
+  const base = import.meta.env.VITE_LIVE_URL
+    ? import.meta.env.VITE_LIVE_URL
+    : `${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}/live`;
+  // Browsers can't set headers on a WS upgrade — pass the token as a query
+  // param (the server's auth.ts reads `?token=` for exactly this case).
+  const token = getToken();
+  return token ? `${base}${base.includes("?") ? "&" : "?"}token=${encodeURIComponent(token)}` : base;
 }
 
 /**

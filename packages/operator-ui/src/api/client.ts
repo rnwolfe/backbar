@@ -6,6 +6,7 @@ import type {
   Reading,
   Recipe,
 } from "@backbar/core";
+import { authHeader, markUnauthorized } from "../auth";
 
 export type BottleWithProduct = Bottle & { product: Product | null };
 
@@ -289,9 +290,15 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
     ...init,
     headers: {
       "content-type": "application/json",
+      ...authHeader(),
       ...(init?.headers ?? {}),
     },
   });
+  if (res.status === 401) {
+    // Prod gate rejected us — surface the token prompt and bail.
+    markUnauthorized();
+    throw new Error(`401 ${path}: unauthorized`);
+  }
   if (!res.ok) {
     const body = await res.text().catch(() => "");
     throw new Error(`${res.status} ${path}: ${body}`);

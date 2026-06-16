@@ -183,6 +183,26 @@ recovery steps.
 
 ---
 
+## Production
+
+Backbar ships to a home-lab host as a single Bun process under a systemd user
+service, fronted by Caddy. One process serves the operator console
+(token-gated) at `backbar.labs.rwolfe.io` and the public guest menu at
+`menu.labs.rwolfe.io`, routed by `Host` header. The `backbar` CLI
+(`scripts/backbar`) drives the whole lifecycle:
+
+```bash
+backbar bootstrap     # one-time: install · build · install+start the service
+backbar deploy        # everyday: pull origin/main · rebuild · restart · smoke
+backbar announce      # cut a release, push, deploy — ships the "What's New" modal
+backbar status        # version · service state · health · exposed URLs
+```
+
+See [scripts/PROD.md](scripts/PROD.md) for the full runbook (`.env.local`,
+exposure, token rotation, smoke tests).
+
+---
+
 ## Project layout
 
 ```
