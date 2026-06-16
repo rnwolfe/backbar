@@ -113,7 +113,19 @@ export function WhatsNewModal() {
           </button>
         </header>
 
-        <div style={{ padding: "14px 18px 18px", display: "grid", gap: 14 }}>
+        <div style={{ padding: "14px 18px 18px", display: "grid", gap: 16 }}>
+          {entry.intro ? (
+            <p
+              style={{
+                margin: 0,
+                color: T.ink,
+                fontSize: 14,
+                lineHeight: 1.5,
+              }}
+            >
+              {entry.intro}
+            </p>
+          ) : null}
           {entry.sections.map((section) => (
             <section key={section.title}>
               <h3
@@ -133,14 +145,18 @@ export function WhatsNewModal() {
                   margin: 0,
                   paddingLeft: 18,
                   display: "grid",
-                  gap: 7,
-                  color: T.ink,
+                  gap: 9,
                   fontSize: 13,
-                  lineHeight: 1.45,
+                  lineHeight: 1.5,
                 }}
               >
-                {section.items.map((item) => (
-                  <li key={item}>{item}</li>
+                {section.bullets.map((bullet, i) => (
+                  <li key={i} style={{ color: T.inkMuted }}>
+                    {bullet.lead ? (
+                      <span style={{ color: T.ink, fontWeight: 600 }}>{bullet.lead}. </span>
+                    ) : null}
+                    {bullet.body}
+                  </li>
                 ))}
               </ul>
             </section>

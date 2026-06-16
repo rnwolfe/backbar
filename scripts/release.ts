@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { draftReleaseNotes, renderDraftedEntry } from "./release-notes";
 
 export type Bump = "major" | "minor" | "patch" | "none";
 
@@ -174,8 +175,27 @@ function assertTagDoesNotExist(tag: string): void {
   if (existing) throw new Error(`tag already exists: ${tag}`);
 }
 
-function main(): void {
+/**
+ * Build the changelog entry for a release. Prefers model-drafted, human-friendly
+ * "What's New" prose (factory-style); falls back to the deterministic
+ * commit-grouped changelog when AI is unavailable or `--no-ai` is passed.
+ */
+async function buildEntry(
+  version: string,
+  date: string,
+  commits: ConventionalCommit[],
+  useAi: boolean,
+): Promise<string> {
+  if (useAi) {
+    const notes = await draftReleaseNotes(commits, version);
+    if (notes) return renderDraftedEntry(version, date, notes);
+  }
+  return renderChangelogEntry(version, date, commits);
+}
+
+async function main(): Promise<void> {
   const dryRun = process.argv.includes("--dry-run");
+  const useAi = !process.argv.includes("--no-ai");
   if (!dryRun) assertCleanWorktree();
 
   const currentVersion = readRootVersion();
@@ -194,7 +214,8 @@ function main(): void {
   const tag = `v${nextVersion}`;
   assertTagDoesNotExist(tag);
 
-  const entry = renderChangelogEntry(nextVersion, today(), conventionalCommits);
+  if (useAi) console.log("Drafting human-friendly release notes…");
+  const entry = await buildEntry(nextVersion, today(), conventionalCommits, useAi);
 
   if (dryRun) {
     console.log(`last tag: ${lastTag ?? "(none)"}`);
@@ -220,5 +241,8 @@ function main(): void {
 }
 
 if (import.meta.main) {
-  main();
+  main().catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
 }

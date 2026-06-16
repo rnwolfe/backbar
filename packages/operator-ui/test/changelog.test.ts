@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { latestChangelogEntry } from "../src/release/changelog";
 
 describe("latestChangelogEntry", () => {
-  test("reads the section matching the running version", () => {
+  test("reads intro + lead/body bullets for the running version", () => {
     const entry = latestChangelogEntry(
       `# Changelog
 
@@ -10,13 +10,15 @@ describe("latestChangelogEntry", () => {
 
 ## [0.2.0] - 2026-06-12
 
+This release sharpens the operator console.
+
 ### Added
 
-- **operator-ui:** add what's new modal
+- **What's new modal.** First visit after an upgrade shows the release notes.
 
 ### Fixed
 
-- prevent duplicate display
+- Prevented a duplicate display on reconnect.
 
 ## [0.1.0] - 2026-06-01
 
@@ -28,9 +30,18 @@ describe("latestChangelogEntry", () => {
     );
 
     expect(entry?.version).toBe("0.2.0");
+    expect(entry?.intro).toBe("This release sharpens the operator console.");
     expect(entry?.sections).toEqual([
-      { title: "Added", items: ["operator-ui: add what's new modal"] },
-      { title: "Fixed", items: ["prevent duplicate display"] },
+      {
+        title: "Added",
+        bullets: [
+          { lead: "What's new modal", body: "First visit after an upgrade shows the release notes." },
+        ],
+      },
+      {
+        title: "Fixed",
+        bullets: [{ lead: null, body: "Prevented a duplicate display on reconnect." }],
+      },
     ]);
   });
 

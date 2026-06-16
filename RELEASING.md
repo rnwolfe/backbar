@@ -50,6 +50,24 @@ git push origin HEAD
 git push origin vX.Y.Z
 ```
 
+## What's New notes (human-friendly)
+
+Step 5 doesn't echo commit subjects. When `AI_GATEWAY_API_KEY` (or
+`~/.ai_gateway_api_key`) is available, the release drafts **human-friendly
+"What's New" prose** — a one-line intro plus `**Lead.** body` bullets grouped
+into Added / Fixed / Changed — the same notes the operator console's What's New
+modal renders (`scripts/release-notes.ts`). This mirrors factory's release
+notes: written for the operator, not the git log.
+
+If drafting is unavailable (offline, no key) or you pass `--no-ai`, the release
+falls back to the deterministic commit-grouped changelog. Override the model
+with `RELEASE_NOTES_MODEL` (default `anthropic/claude-sonnet-4`).
+
+```bash
+bun run release            # AI-drafted notes when a key is present
+bun run release -- --no-ai # force the deterministic changelog
+```
+
 ## Recovery Before Push
 
 If the release is wrong and has not been pushed:
