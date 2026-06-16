@@ -8,7 +8,8 @@
     "typecheck": "tsc --noEmit",
     "test": "bun test",
     "migrate": "bun run src/bin/migrate.ts",
-    "seed": "bun run src/bin/seed.ts"
+    "seed": "bun run src/bin/seed.ts",
+    "seed:reference": "bun run src/bin/seed-reference.ts"
   },
   "dependencies": {
     "@backbar/core": "workspace:*",

@@ -9,6 +9,8 @@ import {
   STARTER_BOTTLES,
   STARTER_NODES,
   seed,
+  seedFixtures,
+  seedReference,
 } from "../src/seed";
 
 const MUST_HAVE_RECIPES = [
@@ -138,5 +140,56 @@ describe("canon seed", () => {
     expect(id).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
     );
+  });
+});
+
+describe("reference / fixtures split (live-update safety)", () => {
+  test("seedReference loads managed content only — no bottles/pours/readings", () => {
+    const db = openMemory();
+    migrate(db);
+    const r = seedReference(db);
+
+    expect(r.products.inserted).toBe(CANON_PRODUCTS.length);
+    expect(r.recipes.inserted).toBe(CANON_RECIPES.length);
+    expect(r.flavor.profiles).toBeGreaterThan(0);
+    expect(r.flavor.molecular_edges).toBeGreaterThan(0);
+
+    // No inventory or history was seeded.
+    expect(bottles(db).list().length).toBe(0);
+    expect(pours(db).list(10).length).toBe(0);
+  });
+
+  test("seedReference is idempotent — second run inserts nothing", () => {
+    const db = openMemory();
+    migrate(db);
+    seedReference(db);
+    const second = seedReference(db);
+    expect(second.products.inserted).toBe(0);
+    expect(second.recipes.inserted).toBe(0);
+    expect(second.categories.inserted).toBe(0);
+  });
+
+  test("fixtures never backfill readings onto an operator-added bottle", () => {
+    const db = openMemory();
+    migrate(db);
+    seed(db); // full bootstrap — starter bottles get 14 readings each
+
+    // Operator adds a bottle by hand (no readings, not in the starter set).
+    bottles(db).insert({
+      id: "op-bottle",
+      product_id: "buffalo-trace",
+      full_ml: 750,
+      level_ml: 600,
+      status: "open",
+      tracked: false,
+    });
+    expect(readings(db).forBottle("op-bottle", 5).length).toBe(0);
+
+    // A reseed (e.g. admin /reseed, or a stray full seed) must NOT fabricate
+    // synthetic history on the operator's bottle.
+    seedFixtures(db);
+    expect(readings(db).forBottle("op-bottle", 5).length).toBe(0);
+    // Starter bottles still have exactly their 14 (not doubled).
+    expect(readings(db).forBottle(STARTER_BOTTLES[0]!.id, 50).length).toBe(14);
   });
 });

@@ -35,10 +35,14 @@ export { FLAVOR_PROFILES } from "../seed/flavor/profiles";
 export { SUBSTITUTES } from "../seed/flavor/substitutes";
 export {
   seed,
+  seedReference,
+  seedFixtures,
   CANON_RECIPES,
   CANON_PRODUCTS,
   STARTER_BOTTLES,
   STARTER_CATEGORIES,
   DENSITY_BY_CATEGORY,
   type SeedReport,
+  type ReferenceReport,
+  type FixturesReport,
 } from "./seed";

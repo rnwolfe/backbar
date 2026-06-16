@@ -2,12 +2,11 @@
 import { open } from "../client";
 import { migrate } from "../migrations";
 import { seed } from "../seed";
-import { seedFlavor } from "../seedFlavor";
 
 const db = open();
 migrate(db);
 const report = seed(db);
-const flavor = seedFlavor(db);
+const flavor = report.flavor;
 const row = (label: string, c: { inserted: number; skipped: number }) =>
   `[seed] ${label.padEnd(10)} +${c.inserted} new, ${c.skipped} already present`;
 console.log(row("products", report.products));
