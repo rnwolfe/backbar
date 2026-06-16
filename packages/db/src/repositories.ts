@@ -597,6 +597,21 @@ export const recipes = (db: DB) => ({
       return recipeFromRow(r, ings);
     });
   },
+
+  /**
+   * Publish exactly `ids`: set `is_published = 1` for them and `0` for every
+   * other recipe, in one transaction. This is the guest-menu publish action —
+   * the operator's selection becomes the complete published set (the live
+   * `/guest/menu` projection then shows the published ∩ makeable recipes).
+   */
+  publishOnly(ids: string[]): void {
+    db.transaction(() => {
+      db.run("UPDATE recipe SET is_published = 0");
+      for (const id of ids) {
+        db.run("UPDATE recipe SET is_published = 1 WHERE id = ?", [id]);
+      }
+    })();
+  },
 });
 
 // ─── pour ────────────────────────────────────────────────────────────────

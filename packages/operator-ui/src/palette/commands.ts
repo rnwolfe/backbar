@@ -190,14 +190,15 @@ const builtins: Command[] = [
   // ─── menu ───────────────────────────────────────────────────────────────
   {
     id: "menu.publish",
-    title: "Publish guest menu",
+    title: "Refresh guest menu",
     group: "menu",
-    keywords: ["snapshot", "vercel"],
+    keywords: ["publish", "guest", "menu"],
     icon: "↥",
     run: async (ctx) => {
       try {
+        // No selection from the palette — refresh the live menu in place.
         const res = await api.publishMenu();
-        ctx.palette.toast(`published ${res.count} recipes → ${res.url}`);
+        ctx.palette.toast(`guest menu refreshed · ${res.count} live`);
       } catch (e) {
         ctx.palette.toast(e instanceof Error ? e.message : "publish failed");
       }

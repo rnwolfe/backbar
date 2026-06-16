@@ -9,10 +9,8 @@ import { Cell } from "../console/Cells";
 import { QrCodeOverlay } from "../console/overlays/QrCodeOverlay";
 import { T, accent } from "../console/tokens";
 import { joinRecipes, type JoinedRecipe } from "../data/derive";
-import { useStore } from "../store/useStore";
+import { store, useStore } from "../store/useStore";
 import { useViewport } from "../util/useViewport";
-
-type HostMode = "vercel" | "caddy";
 
 export function Menu() {
   const tweaks = useStore((s) => s.tweaks);
@@ -28,7 +26,6 @@ export function Menu() {
   const makeableList = joined.filter((r) => r.status === "makeable");
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [hostMode, setHostMode] = useState<HostMode>("vercel");
   const [publishing, setPublishing] = useState(false);
   const [lastResult, setLastResult] = useState<{ url: string; count: number } | null>(null);
   const [publishError, setPublishError] = useState<string | null>(null);
@@ -60,8 +57,10 @@ export function Menu() {
     setPublishing(true);
     setPublishError(null);
     try {
-      const res = await api.publishMenu();
-      setLastResult(res);
+      const res = await api.publishMenu([...selected]);
+      setLastResult({ url: res.url ?? guestUrl, count: res.count });
+      // Reflect the now-persisted is_published flags in the store.
+      await store.refreshRecipes();
     } catch (e) {
       setPublishError(e instanceof Error ? e.message : "publish failed");
     } finally {
@@ -122,50 +121,19 @@ export function Menu() {
           </Cell>
         </div>
 
-        <div>
-          <div style={{ fontSize: 10, letterSpacing: "0.14em", color: T.inkMuted, marginBottom: 6 }}>HOST MODE</div>
-          <div style={{ display: "flex", border: `1px solid ${T.hairline2}` }}>
-            <button
-              type="button"
-              onClick={() => setHostMode("vercel")}
-              style={{
-                flex: 1,
-                padding: "8px 0",
-                fontSize: 11,
-                fontFamily: T.mono,
-                letterSpacing: "0.08em",
-                background: hostMode === "vercel" ? T.cyanGlow : "transparent",
-                color: hostMode === "vercel" ? A : T.inkMuted,
-                border: "none",
-                borderRight: `1px solid ${T.hairline2}`,
-                cursor: "pointer",
-              }}
-            >
-              VERCEL SNAPSHOT
-            </button>
-            <button
-              type="button"
-              onClick={() => setHostMode("caddy")}
-              style={{
-                flex: 1,
-                padding: "8px 0",
-                fontSize: 11,
-                fontFamily: T.mono,
-                letterSpacing: "0.08em",
-                background: hostMode === "caddy" ? T.cyanGlow : "transparent",
-                color: hostMode === "caddy" ? A : T.inkMuted,
-                border: "none",
-                cursor: "pointer",
-              }}
-            >
-              LOCAL CADDY
-            </button>
-          </div>
-          <div style={{ fontSize: 11, color: T.inkMuted, marginTop: 6, lineHeight: 1.5 }}>
-            {hostMode === "vercel"
-              ? "Push a static build off-site. Re-snapshot on demand; guest URL stable. Home network not exposed."
-              : "Caddy reverse-proxies guest routes off live inventory. Bottles draining is reflected immediately; only the guest subdomain is public."}
-          </div>
+        <div
+          style={{
+            fontSize: 11,
+            color: T.inkMuted,
+            lineHeight: 1.5,
+            padding: "10px 12px",
+            border: `1px solid ${T.hairline2}`,
+            background: T.surface2,
+          }}
+        >
+          Publishing updates the live guest menu instantly. Guests see exactly the
+          recipes you select below — and only while they stay makeable, so a
+          draining bottle drops its drink automatically.
         </div>
 
         <div>

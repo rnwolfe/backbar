@@ -209,6 +209,14 @@ export const store = {
       // Non-blocking — Settings shows last known state until next hydrate.
     }
   },
+  async refreshRecipes() {
+    try {
+      const recipes = await api.recipes();
+      set({ recipes });
+    } catch {
+      // Non-blocking — the Menu view keeps its local selection until next hydrate.
+    }
+  },
   async refreshCategories() {
     try {
       const categories = await api.categories();

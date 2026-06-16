@@ -408,7 +408,13 @@ export const api = {
       `/products/${encodeURIComponent(id)}/tags`,
       { method: "PUT", body: JSON.stringify({ tags }) },
     ),
-  publishMenu: () => req<{ url: string; count: number }>("/menu/publish", { method: "POST" }),
+  // Pass the selected recipe ids to set the published set; omit to refresh the
+  // live menu without changing what's published.
+  publishMenu: (recipeIds?: string[]) =>
+    req<{ url: string | null; count: number }>("/menu/publish", {
+      method: "POST",
+      ...(recipeIds ? { body: JSON.stringify({ recipe_ids: recipeIds }) } : {}),
+    }),
   adminResetBar: () => req<AdminResetBarResponse>("/admin/reset/bar", { method: "POST" }),
   adminResetRecipes: () => req<AdminResetRecipesResponse>("/admin/reset/recipes", { method: "POST" }),
   adminReseed: () => req<AdminReseedResponse>("/admin/reseed", { method: "POST" }),

@@ -1,6 +1,4 @@
 import { describe, expect, test } from "bun:test";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { call, setup } from "./_helpers";
 
 describe("REST surface — spec §5 endpoints", () => {
@@ -148,36 +146,30 @@ describe("REST surface — spec §5 endpoints", () => {
     expect(Object.keys(body[0]!).sort()).toEqual(["family", "garnish", "glass", "ice", "instructions", "name", "tags"]);
   });
 
-  test("POST /menu/publish (snapshot mode) writes snapshot and returns {mode, url, count}", async () => {
-    const tmp = join(tmpdir(), `backbar-menu-${Date.now()}-${Math.random()}`);
-    const { app } = setup({ GUEST_MENU_OUT_DIR: tmp });
-    const res = await call(app, "POST", "/menu/publish");
-    const body = (await res.json()) as { mode: string; url: string; count: number };
-    expect(body.mode).toBe("snapshot");
+  test("POST /menu/publish persists the selection as the live guest menu", async () => {
+    const { app } = setup({ GUEST_PUBLIC_URL: "https://menu.example.com" });
+
+    // Publish an empty selection → the live menu empties.
+    const empty = await call(app, "POST", "/menu/publish", { recipe_ids: [] });
+    expect(((await empty.json()) as { count: number }).count).toBe(0);
+    const emptied = (await (await call(app, "GET", "/guest/menu")).json()) as unknown[];
+    expect(emptied.length).toBe(0);
+
+    // Publish the Daiquiri → it (re)appears live, and the public URL is echoed.
+    const res = await call(app, "POST", "/menu/publish", { recipe_ids: ["daiquiri"] });
+    const body = (await res.json()) as { url: string | null; count: number };
+    expect(body.url).toBe("https://menu.example.com");
     expect(body.count).toBe(1);
-    expect(body.url.startsWith("file://")).toBe(true);
-    // Read the snapshot back.
-    const file = Bun.file(`${tmp}/menu.json`);
-    expect(await file.exists()).toBe(true);
-    const snap = JSON.parse(await file.text()) as Array<{ name: string }>;
-    expect(snap[0]?.name).toBe("Daiquiri");
+    const menu = (await (await call(app, "GET", "/guest/menu")).json()) as Array<{ name: string }>;
+    expect(menu.map((m) => m.name)).toEqual(["Daiquiri"]);
   });
 
-  test("POST /menu/publish (caddy mode) is a no-op publish and writes no file", async () => {
-    const tmp = join(tmpdir(), `backbar-menu-caddy-${Date.now()}-${Math.random()}`);
-    const { app } = setup({
-      GUEST_MENU_OUT_DIR: tmp,
-      MENU_SERVE_MODE: "caddy",
-      GUEST_PUBLIC_URL: "https://bar.example.com",
-    });
+  test("POST /menu/publish with no body refreshes without changing the published set", async () => {
+    const { app } = setup();
     const res = await call(app, "POST", "/menu/publish");
-    const body = (await res.json()) as { mode: string; url: string | null; count: number };
-    expect(body.mode).toBe("caddy");
-    expect(body.url).toBe("https://bar.example.com");
-    expect(body.count).toBe(1);
-    // Caddy mode never touches disk.
-    const file = Bun.file(`${tmp}/menu.json`);
-    expect(await file.exists()).toBe(false);
+    const body = (await res.json()) as { url: string | null; count: number };
+    expect(body.count).toBe(1); // Daiquiri stays published
+    expect(body.url).toBeNull(); // no GUEST_PUBLIC_URL configured
   });
 
   test("POST /ai/ideate without AI key → 503 ai-disabled", async () => {
