@@ -1,7 +1,7 @@
 {
   "name": "backbar",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Backbar — local-first home-bar OS: inventory + weight-based depletion + recipes + AI mixology",
   "workspaces": [
     "packages/core",
