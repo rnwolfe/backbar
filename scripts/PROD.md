@@ -62,9 +62,10 @@ Seed data is split so updates never clobber operator data:
   ship with every release.
 - **Bootstrap fixtures** (starter bottles + synthetic pours/readings) — folded
   into the full `bun run --filter @backbar/db seed`, used only by `backbar
-  bootstrap` on a fresh host. The readings/pours backfill only ever fills
-  bottles inserted in the same run, so it can never fabricate history on an
-  operator-added bottle. **Deploy never runs the full seed.**
+  bootstrap` on a fresh host. Synthetic history stays off operator bottles two
+  ways: readings backfill only the bottles inserted in that run, and pours seed
+  only when the pour table is empty (and the synthetic bindings reference only
+  starter bottles regardless). **Deploy never runs the full seed.**
 
 ## Releases & "What's New"
 

@@ -57,9 +57,11 @@ export interface ReferenceReport {
 
 /**
  * Bootstrap fixtures — the starter bar's bottles + synthetic history. **Run
- * once at bootstrap, never on a live deploy.** Guards make a re-run safe, and
- * the readings/pours backfill only ever fills bottles inserted *in the same
- * run*, so it can never fabricate history on an operator-added bottle.
+ * once at bootstrap, never on a live deploy.** Guards make a re-run safe and
+ * keep synthetic history off operator-added bottles, by two different means:
+ * readings are backfilled only for bottles inserted *in this run*; pours are
+ * seeded only when the pour table is empty, and the synthetic bindings only
+ * reference starter bottles regardless.
  */
 export interface FixturesReport {
   bottles: InsertCounts;
@@ -152,9 +154,11 @@ export function seedReference(db: DB): ReferenceReport {
 /**
  * Bootstrap fixtures: starter bottles, fleet nodes, sensor channels, and 28d of
  * synthetic pours/readings. **Bootstrap-only — `backbar deploy` never calls
- * this.** Every section guards against duplicates, and the readings/pours
- * backfill only ever fills bottles inserted *in this run*, so a live deploy or
- * admin reseed can never fabricate history on an operator-added bottle.
+ * this.** Every section guards against duplicates, and synthetic history stays
+ * off operator-added bottles two ways: readings are backfilled only for bottles
+ * inserted *in this run*; pours are seeded only when the pour table is empty,
+ * and the synthetic bindings reference only starter bottles regardless. So a
+ * live deploy or admin reseed can't fabricate history on an operator bottle.
  *
  * Requires the reference catalog to exist first (bottle → product FK).
  */
