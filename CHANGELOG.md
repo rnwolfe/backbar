@@ -8,6 +8,14 @@ version.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-06-16
+
+Backbar now delivers polished, user-friendly release notes that highlight what actually matters to you.
+
+### Added
+
+- **Human-friendly release notes.** The What's New modal now shows curated feature highlights instead of raw developer commit messages.
+
 ## [0.1.0] - 2026-06-16
 
 Initial release bringing AI-powered inventory management and recipe creation to your home bar.
