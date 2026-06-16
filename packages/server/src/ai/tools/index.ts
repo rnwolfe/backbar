@@ -47,6 +47,31 @@ const IngredientInput = z.object({
   unit: Unit.describe("Unit: ml | dash | barspoon | top | each | leaf."),
 });
 
+/** Dish taste intensities 0..1, constrained to the known taste keys. */
+const TasteScores = z.object({
+  sweet: z.number().min(0).max(1).optional(),
+  sour: z.number().min(0).max(1).optional(),
+  salt: z.number().min(0).max(1).optional(),
+  bitter: z.number().min(0).max(1).optional(),
+  umami: z.number().min(0).max(1).optional(),
+  fat: z.number().min(0).max(1).optional(),
+  spicy: z.number().min(0).max(1).optional(),
+});
+
+/** Human-readable rationale for a pairing's dominant basis. */
+function pairingWhy(basis: string): string {
+  switch (basis) {
+    case "co-occurrence":
+      return "appear together in classic cocktails";
+    case "molecular":
+      return "share aroma compounds (exploratory)";
+    case "both":
+      return "appear together in classics and share aromas";
+    default:
+      return "overlapping flavor profile";
+  }
+}
+
 /** Compact volumetric ratio readout, e.g. "2 : 0.75 : 0.75". */
 function ratioReadout(amounts: number[]): string {
   const vols = amounts.filter((a) => a > 0);
@@ -71,14 +96,21 @@ export function buildTools(deps: Deps) {
   const pairingsRepo = flavorPairings(deps.db);
   const subsRepo = ingredientSubstitutes(deps.db);
 
-  /** Refs currently in stock (product ids ∪ categories ∪ in-stock flavor_tags). */
+  /**
+   * Refs currently in stock (product ids ∪ categories ∪ in-stock flavor_tags).
+   * Memoized for the life of this per-request registry — multiple tools may
+   * ask in one generation loop, and inventory is stable within a request.
+   */
+  let stockCache: Set<string> | null = null;
   const inStockRefs = (): Set<string> => {
+    if (stockCache) return stockCache;
     const inv = loadInventory(deps.db);
     const set = buildRefSet(inv);
     for (const b of inv) {
       if (b.status === "empty" || b.status === "archived") continue;
       for (const t of b.product.flavor_tags ?? []) set.add(t);
     }
+    stockCache = set;
     return set;
   };
 
@@ -211,14 +243,14 @@ export function buildTools(deps: Deps) {
         const stock = in_stock_only ? inStockRefs() : null;
         const scored = pairingsRepo
           .forRef(ref)
-          .map((e) => ({
-            ref: e.partner,
-            score: pairingBlend({
+          .map((e) => {
+            const blend = pairingBlend({
               cooccurrence: e.cooccurrence,
               molecular: e.molecular,
               descriptor: descriptorSim(ref, e.partner),
-            }).score,
-          }))
+            });
+            return { ref: e.partner, score: blend.score, why: pairingWhy(blend.basis) };
+          })
           .filter((p) => (stock ? stock.has(p.ref) : true))
           .sort((x, y) => y.score - x.score)
           .slice(0, n)
@@ -275,7 +307,7 @@ export function buildTools(deps: Deps) {
       inputSchema: z.object({
         dish: z.object({
           intensity: z.number().min(0).max(1),
-          tastes: z.record(z.string(), z.number()),
+          tastes: TasteScores,
           cuisine: z.string().optional(),
           descriptors: z.array(z.string()).optional(),
         }),
@@ -294,7 +326,7 @@ export function buildTools(deps: Deps) {
         return scoreFoodPairing(
           {
             intensity: dish.intensity,
-            tastes: dish.tastes as never,
+            tastes: dish.tastes,
             cuisine: dish.cuisine,
             descriptors: dish.descriptors,
           },

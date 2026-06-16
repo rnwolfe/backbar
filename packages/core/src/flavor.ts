@@ -155,9 +155,6 @@ export function pairingBlend(signals: {
   const co = clamp01(signals.cooccurrence);
   const de = clamp01(signals.descriptor);
   const mo = clamp01(signals.molecular);
-  const haveCo = signals.cooccurrence != null;
-  const haveMo = signals.molecular != null;
-
   // Weighted blend with renormalization over present signals.
   const parts: Array<[number, number]> = [];
   if (signals.cooccurrence != null) parts.push([0.6, co]);
@@ -167,7 +164,13 @@ export function pairingBlend(signals: {
   const wsum = parts.reduce((s, [w]) => s + w, 0);
   const score = parts.reduce((s, [w, v]) => s + (w / wsum) * v, 0);
 
-  const basis: PairingBasis = haveCo && haveMo ? "both" : haveCo ? "co-occurrence" : haveMo ? "molecular" : "descriptor";
+  // `basis` reports which signals contributed: a single name when only one is
+  // present, otherwise "both" (i.e. more than one signal informed the score).
+  const present: PairingBasis[] = [];
+  if (signals.cooccurrence != null) present.push("co-occurrence");
+  if (signals.molecular != null) present.push("molecular");
+  if (signals.descriptor != null) present.push("descriptor");
+  const basis: PairingBasis = present.length > 1 ? "both" : (present[0] ?? "descriptor");
   return { score: clamp01(score), basis };
 }
 

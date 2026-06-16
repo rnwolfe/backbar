@@ -67,9 +67,20 @@ function resolveDataDir(): string {
   return downloadAhn();
 }
 
+function requireBinary(name: string): void {
+  if (!Bun.which(name)) {
+    throw new Error(
+      `\`${name}\` not found on PATH. Install it, or download + extract the Ahn dataset ` +
+        `manually (Zenodo 11449658) and point FPN_DIR at the ingr_comp/ folder.`,
+    );
+  }
+}
+
 function downloadAhn(): string {
   const tmp = "/tmp/fpn";
   log(`local extract not found — downloading Ahn dataset from Zenodo…`);
+  requireBinary("curl");
+  requireBinary("unzip");
   mkdirSync(tmp, { recursive: true });
   const zip = join(tmp, "data.zip");
   const r = Bun.spawnSync(["curl", "-fsSL", "-o", zip, ZENODO]);

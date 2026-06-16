@@ -48,7 +48,7 @@ reads. ~120 rows covering our category/tag vocabulary plus notable named product
   { ref: "campari", ref_type: "product",
     descriptors: ["bitter-orange","rhubarb","gentian","clove","red-fruit"],
     axes: { sweet: 0.35, sour: 0, bitter: 0.8, strong: 0.4, aromatic: 0.6 },
-    typical_abv: 0.24, intensity: 0.8, role: "bittering-modifier",
+    typical_abv: 0.24, intensity: 0.8, role: "amaro-bitter",
     notes: "Backbone bitter for the Negroni family." }
   ```
   (`dilution` axis is method-driven, not per-ingredient.)
@@ -56,7 +56,7 @@ reads. ~120 rows covering our category/tag vocabulary plus notable named product
   (`smugglers-cove`, `cocktail-codex`, `flavor`) as the spine, with wording
   informed by corpus **I** (read FlavorDB/GoodScents/WCR for accuracy, **write our
   own** descriptors — facts/our-words, nothing copied).
-- **Build:** authored TS in `packages/db/seed/flavor-profiles.ts`, zod-validated.
+- **Build:** authored TS in `packages/db/seed/flavor/profiles.ts`, zod-validated.
   Axes calibrated so canon recipes reproduce their hand-set `balance` (regression
   test: seeded canon `balance` ≈ `aggregateBalance` over profiles).
 
@@ -79,8 +79,10 @@ reads. ~120 rows covering our category/tag vocabulary plus notable named product
   co-appear; score with PMI / normalized co-occurrence.
 - **Target:** `flavor_pairing.cooccurrence` (0..1) over our refs (no normalization
   needed — already our vocabulary).
-- **Consumer:** `pairing_score` *primary*, `top_pairings`. Blended:
-  `score = 0.7·cooccurrence + 0.3·molecular` (tunable; molecular flagged).
+- **Consumer:** `pairing_score` *primary*, `top_pairings`. Blended in
+  `pairingBlend()` as `0.6·cooccurrence + 0.3·descriptor + 0.1·molecular`,
+  **renormalized over whichever signals are present** (weights tunable; molecular
+  is flagged exploratory).
 
 ## D. Canon recipe expansion — IBA
 

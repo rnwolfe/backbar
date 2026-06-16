@@ -45,38 +45,41 @@ All tools live in `packages/server/src/ai/tools/*`, defined with the AI SDK
 `packages/core` functions** and **seeded `packages/db` data**. The `description`
 is the contract that teaches the model *when* to call each one.
 
+Every ingredient param is `{ ref, amount, unit }` (unit ∈ ml|dash|barspoon|top|each|leaf).
+The rows below mirror the **implemented** registry in `packages/server/src/ai/tools/index.ts`.
+
 ### Computational tools (pure `core` under the hood — also the server's guardrail)
 
 | Tool | Params | Returns | Description (drafted, model-facing) |
 |---|---|---|---|
-| `check_balance` | `{ ingredients[], method }` | `{ final_abv, balance{6 axes}, flags, ratio_readout, verdict:"ok"\|"revise", issues[] }` | "Verify a draft is actually balanced and correctly strong. Resolves each ingredient's ABV and flavor axes, computes real final ABV after dilution, and flags problems (too hot >30%, too watery <8%, citrus-forward, under-sweet, bitter-dominant). Call before submitting; a `revise` verdict means fix the named issue, don't ship it." |
-| `compute_dilution` | `{ ingredients[], method }` | `{ water_ml, final_volume_ml, final_abv, target_temp_c }` | "Compute chilling dilution and final strength/volume for a build using the method's dilution factor (Liquid-Intelligence calibrated). Use to size a drink and confirm it lands in-glass." |
-| `classify_family` | `{ ingredients[], method, claimed_family? }` | `{ family, confidence, matches_claim, why }` | "Identify which Cocktail-Codex root a build belongs to (Old-Fashioned/Martini/Daiquiri/Sidecar/Highball/Flip) from its structure. Use to check a drink actually is the family you're calling it." |
-| `suggest_ratio` | `{ family, roles[] }` | `{ ratio, parts[], notes }` | "Get the canonical starting ratio for a family (e.g. sour 2:0.75:0.75), normalized for syrup richness and citrus acidity. Use when proportioning a new build." |
+| `check_balance` | `{ ingredients[], method }` | `{ final_abv, balance{6 axes}, flags{too_hot,too_watery}, ratio_readout, verdict:"ok"\|"revise", issues[] }` | "Verify a draft is actually balanced and correctly strong. Resolves each ingredient's ABV and flavor axes, computes real final ABV after dilution, and flags problems (too hot >30%, too watery <8%, too tart, cloying, over-bitter). Call before submitting; a `revise` verdict means fix the named issue, don't ship it." |
+| `compute_dilution` | `{ ingredients[], method }` | `{ pre_dilution_ml, water_ml, final_volume_ml, final_abv }` | "Compute chilling dilution and final strength/volume for a build using the method's calibrated dilution factor. Use to size a drink and confirm it lands in-glass." |
+| `classify_family` | `{ ingredients[], method?, claimed_family? }` | `{ root, family, confidence, why, claimed_family, matches }` | "Identify which Cocktail-Codex root a build belongs to (old-fashioned/martini/daiquiri/sidecar/highball/flip) from its structure, and whether it matches the claimed family." |
+| `suggest_ratio` | `{ family }` | `{ found, root, family, ratio, roles, skeleton }` | "Get the canonical starting ratio for a family/root (e.g. sour → 60:22:15). Adjust from here for syrup richness and citrus tartness." |
 | `shake_or_stir` | `{ ingredients[] }` | `{ method, reason }` | "Decide shake vs stir from the ingredients (citrus/egg/dairy/juice → shake; all-spirit/clear → stir). Use to set or check `method`." |
-| `acid_adjust` | `{ juice_ref, target_acidity_pct }` | `{ citric_g, malic_g, per_l }` | "Compute grams of acid to bring a low-acid juice to citrus-like sourness (lime ≈ 6%). Use only when building acid-adjusted juices." |
+| `acid_adjust` *(deferred)* | — | — | Core fn `acidToAdd` exists + is tested, but no tool yet — a useful tool needs a per-juice acidity corpus (current/target). Phase 2 follow-up. |
 
 ### Knowledge tools (seeded data — the "strong descriptors")
 
 | Tool | Params | Returns | Description (drafted) |
 |---|---|---|---|
-| `flavor_profile` | `{ ref }` | `{ descriptors[], axes{}, typical_abv, intensity, role, notes }` | "Look up what an ingredient tastes and smells like, how it contributes to each balance axis, its strength, and its structural role. Use to reason about substitutions, pairings, and why a build works." |
-| `pairing_score` | `{ a, b }` | `{ score, basis:"co-occurrence"\|"molecular"\|"both", shared_descriptors[], note }` | "Score how well two ingredients pair. Primary signal is how often they co-appear in real cocktails; a secondary, **exploratory** molecular-overlap signal is included and labeled. Use to justify or vet a combination — high co-occurrence is reliable, molecular-only is a creative gamble." |
-| `top_pairings` | `{ ref, n?, in_stock_only? }` | `{ partners:[{ref, score, why}] }` | "Find the best partners for an ingredient, optionally limited to in-stock items. Use to extend a build or find what bridges two ingredients." |
-| `flavor_similar` | `{ ref, in_stock_only? }` | `{ alternatives:[{ref, similarity, why}] }` | "Find the closest flavor substitutes for an ingredient by descriptor/profile overlap. Use for one-bottle-away swaps and riffs when the exact bottle isn't available." |
+| `flavor_profile` | `{ ref }` | `{ found, ref, descriptors[], axes{}, typical_abv, intensity, role, notes? }` | "Look up what an ingredient tastes and smells like, how it contributes to each balance axis, its strength, and its structural role. Use to reason about substitutions, pairings, and why a build works." |
+| `pairing_score` | `{ a, b }` | `{ score, basis:"co-occurrence"\|"molecular"\|"descriptor"\|"both", shared_descriptors[] }` | "Score how well two ingredients pair. Primary signal is how often they co-appear in real cocktails; a secondary, **exploratory** molecular-overlap signal is included and labeled. High co-occurrence is reliable, molecular-only is a creative gamble." |
+| `top_pairings` | `{ ref, n?, in_stock_only? }` | `{ ref, partners:[{ref, score, why}] }` | "Find the best partners for an ingredient, optionally limited to in-stock items. Use to extend a build or find what bridges two ingredients." |
+| `flavor_similar` | `{ ref, in_stock_only? }` | `{ ref, alternatives:[{ref, similarity, why}] }` | "Find the closest flavor substitutes for an ingredient (curated swaps first, then profile overlap). Use for one-bottle-away swaps and riffs." |
 
 ### Inventory + food-pairing
 
 | Tool | Params | Returns | Description (drafted) |
 |---|---|---|---|
-| `check_makeable` | `{ ingredients[] }` | `{ state, missing[], one_away? }` | "Confirm every ingredient resolves to something in stock (or a freeform pantry item). Inventory is non-negotiable — call before submitting; never propose a drink that isn't `makeable`." |
-| `score_food_pairing` *(Phase 3)* | `{ dish_features, cocktail_ref }` | `{ score, dimensions{}, why }` | "Score a cocktail against a dish on intensity match, taste interactions (acid cuts fat, etc.), aroma bridges, and cuisine affinity. Use in the food-pairing flow after parsing the dish into features." |
-| `submit_spec` | `GeneratedSpec` | terminal | "Emit the final cocktail. Only call once the drink is makeable, balanced, and the family/ratio check out." |
+| `check_makeable` | `{ refs: string[] }` | `{ makeable, missing[] }` | "Confirm every ingredient resolves to something in stock (product, category, in-stock tag, or freeform pantry item). Inventory is non-negotiable — call before submitting." |
+| `score_food_pairing` | `{ dish:{intensity, tastes, cuisine?, descriptors?}, cocktail:{ingredients[], method} }` | `{ score, dimensions{intensity,taste,aroma,cuisine}, why }` | "Score a cocktail against a dish on intensity match, taste interactions (acid cuts fat, etc.), aroma bridges, and cuisine affinity. The `/ai/pair-food` route that drives this is Phase 3." |
+| `submit_spec` *(deferred)* | — | — | The terminal "answer tool" for the ideate tool-loop — **not in this PR**; lands with the loop integration (see below). |
 
-> **Why a terminal `submit_spec` tool:** AI SDK `generateText` runs the multi-step
-> tool loop; structured final output comes from the model calling `submit_spec`
-> with the `GeneratedSpec` zod schema (the "answer tool" pattern). Keeps one
-> agentic call instead of generate-then-reformat.
+> **Terminal `submit_spec` (follow-up):** when the registry is wired into ideate,
+> AI SDK `generateText` runs the multi-step tool loop and structured final output
+> comes from the model calling `submit_spec` with the `GeneratedSpec` zod schema
+> (the "answer tool" pattern) — one agentic call instead of generate-then-reformat.
 
 ---
 
