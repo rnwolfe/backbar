@@ -15,6 +15,7 @@
     "build": "bun run --filter '*' build",
     "release": "bun run scripts/release.ts",
     "release:dry-run": "bun run scripts/release.ts --dry-run",
+    "corpus:build": "bun run scripts/build-flavor-corpus.ts",
     "test": "bun test",
     "typecheck": "bun run --filter '*' typecheck"
   },
