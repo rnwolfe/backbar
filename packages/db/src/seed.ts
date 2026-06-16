@@ -23,6 +23,7 @@ import {
   generatePourHistory,
   RECIPE_BINDINGS,
 } from "../seed/history";
+import { seedFlavor, type FlavorSeedReport } from "./seedFlavor";
 
 // Re-export so consumers of @backbar/db can read defaults without
 // importing @backbar/core directly (spec §6 — category density defaults).
@@ -40,40 +41,50 @@ interface InsertCounts {
   skipped: number;
 }
 
-export interface SeedReport {
+/**
+ * Managed content that ships with the app and is **safe to re-apply on every
+ * deploy** — idempotent (skip-existing for catalog rows, upsert for the flavor
+ * corpus), never touches operator inventory or history.
+ */
+export interface ReferenceReport {
   categories: InsertCounts;
   products: InsertCounts;
   product_tags: InsertCounts;
-  bottles: InsertCounts;
   recipes: InsertCounts;
-  nodes: InsertCounts;
-  sensor_channels: InsertCounts;
-  pours: InsertCounts;
-  readings: InsertCounts;
+  flavor: FlavorSeedReport;
   densities: Record<string, number>;
 }
 
 /**
- * Load the layer-1 starter bar: products → bottles → canon recipes → nodes →
- * sensor channels → 28d of synthetic pours → 14 readings per bottle.
- *
- * Idempotent: every catalog row is keyed by a stable slug; nodes/channels are
- * upserted; pours/readings use a "skip when any row exists" guard so reseed
- * doesn't pile duplicates on subsequent runs.
- *
- * Order matters: products → bottles (FK), bottles → channels (FK), bottles +
- * recipes → pours (FK), bottles → readings (FK).
+ * Bootstrap fixtures — the starter bar's bottles + synthetic history. **Run
+ * once at bootstrap, never on a live deploy.** Guards make a re-run safe and
+ * keep synthetic history off operator-added bottles, by two different means:
+ * readings are backfilled only for bottles inserted *in this run*; pours are
+ * seeded only when the pour table is empty, and the synthetic bindings only
+ * reference starter bottles regardless.
  */
-export function seed(db: DB): SeedReport {
+export interface FixturesReport {
+  bottles: InsertCounts;
+  nodes: InsertCounts;
+  sensor_channels: InsertCounts;
+  pours: InsertCounts;
+  readings: InsertCounts;
+}
+
+export interface SeedReport extends ReferenceReport, FixturesReport {}
+
+/**
+ * Reference / managed content: categories, canon products + tags, canon
+ * recipes, and the flavor corpus. **Idempotent and live-safe** — catalog rows
+ * skip-if-exists (operator edits survive), the flavor corpus upserts. This is
+ * the only seed step `backbar deploy` runs, so corpus/canon updates ship with
+ * each release without ever touching operator inventory or history.
+ */
+export function seedReference(db: DB): ReferenceReport {
   const categoriesRepo = categories(db);
   const productsRepo = products(db);
   const productTagsRepo = productTags(db);
-  const bottlesRepo = bottles(db);
   const recipesRepo = recipes(db);
-  const nodesRepo = nodes(db);
-  const channelsRepo = sensorChannels(db);
-  const poursRepo = pours(db);
-  const readingsRepo = readings(db);
 
   // Categories — insert any starter rows that aren't already present. Idempotent;
   // operator edits (renamed labels, custom hues) survive a re-seed because we
@@ -118,16 +129,6 @@ export function seed(db: DB): SeedReport {
     }
   }
 
-  const bottleCounts: InsertCounts = { inserted: 0, skipped: 0 };
-  for (const b of STARTER_BOTTLES) {
-    if (bottlesRepo.get(b.id)) {
-      bottleCounts.skipped += 1;
-      continue;
-    }
-    bottlesRepo.insert(b);
-    bottleCounts.inserted += 1;
-  }
-
   const recipeCounts: InsertCounts = { inserted: 0, skipped: 0 };
   for (const r of CANON_RECIPES) {
     if (recipesRepo.get(r.id)) {
@@ -136,6 +137,49 @@ export function seed(db: DB): SeedReport {
     }
     recipesRepo.insert(r);
     recipeCounts.inserted += 1;
+  }
+
+  const flavor = seedFlavor(db);
+
+  return {
+    categories: categoryCounts,
+    products: productCounts,
+    product_tags: productTagCounts,
+    recipes: recipeCounts,
+    flavor,
+    densities: { ...DENSITY_BY_CATEGORY },
+  };
+}
+
+/**
+ * Bootstrap fixtures: starter bottles, fleet nodes, sensor channels, and 28d of
+ * synthetic pours/readings. **Bootstrap-only — `backbar deploy` never calls
+ * this.** Every section guards against duplicates, and synthetic history stays
+ * off operator-added bottles two ways: readings are backfilled only for bottles
+ * inserted *in this run*; pours are seeded only when the pour table is empty,
+ * and the synthetic bindings reference only starter bottles regardless. So a
+ * live deploy or admin reseed can't fabricate history on an operator bottle.
+ *
+ * Requires the reference catalog to exist first (bottle → product FK).
+ */
+export function seedFixtures(db: DB): FixturesReport {
+  const bottlesRepo = bottles(db);
+  const recipesRepo = recipes(db);
+  const nodesRepo = nodes(db);
+  const channelsRepo = sensorChannels(db);
+  const poursRepo = pours(db);
+  const readingsRepo = readings(db);
+
+  const bottleCounts: InsertCounts = { inserted: 0, skipped: 0 };
+  const insertedBottleIds = new Set<string>();
+  for (const b of STARTER_BOTTLES) {
+    if (bottlesRepo.get(b.id)) {
+      bottleCounts.skipped += 1;
+      continue;
+    }
+    bottlesRepo.insert(b);
+    insertedBottleIds.add(b.id);
+    bottleCounts.inserted += 1;
   }
 
   // Nodes — upsert is safe to call repeatedly; we count "inserted" only when
@@ -170,8 +214,7 @@ export function seed(db: DB): SeedReport {
     else channelCounts.skipped += 1;
   }
 
-  // Pours + readings: only insert when the table is empty for the bottles we
-  // own. We don't want to pile 28d on top of every reseed.
+  // Pours: only insert when the table is empty. We don't pile 28d on every reseed.
   const haveAnyPour = poursRepo.list(1).length > 0;
   const pourCounts: InsertCounts = { inserted: 0, skipped: 0 };
   if (haveAnyPour) {
@@ -191,34 +234,39 @@ export function seed(db: DB): SeedReport {
     void RECIPE_BINDINGS; // referenced for IDE go-to-def from this module
   }
 
-  // Readings — 14 per bottle. Only seed when a bottle has no readings yet so
-  // reseed doesn't double-stack the sparklines.
+  // Readings — 14 per bottle, but ONLY for bottles inserted in this run. This
+  // is the live-safety guarantee: an operator-added bottle (not in the starter
+  // set) is never backfilled with synthetic history.
   const readingCounts: InsertCounts = { inserted: 0, skipped: 0 };
   const bottlesNeedingReadings = bottlesRepo
     .list()
-    .filter((b) => readingsRepo.forBottle(b.id, 1).length === 0)
+    .filter((b) => insertedBottleIds.has(b.id) && readingsRepo.forBottle(b.id, 1).length === 0)
     .map((b) => ({ id: b.id, full_ml: b.full_ml, level_ml: b.level_ml }));
-  if (bottlesNeedingReadings.length === 0) {
-    readingCounts.skipped = bottlesRepo.list().length;
-  } else {
-    const readings14 = generateLevelHistory(bottlesNeedingReadings, uuidv7);
-    for (const r of readings14) {
-      readingsRepo.insert(r);
-      readingCounts.inserted += 1;
-    }
-    readingCounts.skipped = bottlesRepo.list().length - bottlesNeedingReadings.length;
+  const readings14 = generateLevelHistory(bottlesNeedingReadings, uuidv7);
+  for (const r of readings14) {
+    readingsRepo.insert(r);
+    readingCounts.inserted += 1;
   }
+  readingCounts.skipped = bottlesRepo.list().length - bottlesNeedingReadings.length;
 
   return {
-    categories: categoryCounts,
-    products: productCounts,
-    product_tags: productTagCounts,
     bottles: bottleCounts,
-    recipes: recipeCounts,
     nodes: nodeCounts,
     sensor_channels: channelCounts,
     pours: pourCounts,
     readings: readingCounts,
-    densities: { ...DENSITY_BY_CATEGORY },
   };
+}
+
+/**
+ * Full bootstrap: reference content + starter fixtures. Used by `db seed` and
+ * the admin `/reseed` endpoint. A live deploy uses {@link seedReference} only.
+ *
+ * Order matters: reference first (products before bottles for the FK), then
+ * fixtures (bottles before channels/pours/readings).
+ */
+export function seed(db: DB): SeedReport {
+  const reference = seedReference(db);
+  const fixtures = seedFixtures(db);
+  return { ...reference, ...fixtures };
 }

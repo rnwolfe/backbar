@@ -71,6 +71,17 @@ _migrate() {
   (cd "$REPO_ROOT" && "$bun" run --filter @backbar/db migrate)
 }
 
+# Apply reference/managed content only (canon catalog + flavor corpus).
+# Idempotent and live-safe — never touches operator inventory or history, so
+# it's safe to run on every deploy. Fixtures (starter bottles + synthetic
+# history) are bootstrap-only and intentionally excluded here.
+_seed_reference() {
+  local bun; bun="$(_bun)"
+  _load_env
+  say "syncing reference content (canon + flavor corpus)…"
+  (cd "$REPO_ROOT" && "$bun" run --filter @backbar/db seed:reference)
+}
+
 _smoke() {
   local port; port="$(_port)"
   sleep 1
@@ -147,6 +158,7 @@ cmd_deploy() {
   say "bun install…"
   (cd "$REPO_ROOT" && "$bun" install --frozen-lockfile)
   _migrate
+  _seed_reference
   _build_uis
   say "restarting $SERVICE…"
   systemctl --user restart "$SERVICE"

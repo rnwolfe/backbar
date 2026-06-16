@@ -45,11 +45,27 @@ to live in `.env.local`. The systemd unit supplies `BACKBAR_OPERATOR_DIST` /
 ## Everyday deploy
 
 ```bash
-backbar deploy        # fetch origin/main · install · migrate · rebuild · restart · smoke
+backbar deploy        # fetch origin/main · install · migrate · sync-reference · rebuild · restart · smoke
 ```
 
 Refuses on a dirty tree. It is idempotent — safe to re-run. Tracks
 `origin/main`, so land changes there first.
+
+### Seeding vs live data
+
+Seed data is split so updates never clobber operator data:
+
+- **Reference content** (canon catalog + flavor corpus) — `bun run --filter
+  @backbar/db seed:reference`. Idempotent and **live-safe**: catalog rows
+  skip-if-exists, the flavor corpus upserts, and it never touches inventory or
+  history. **`backbar deploy` runs this automatically**, so corpus/canon updates
+  ship with every release.
+- **Bootstrap fixtures** (starter bottles + synthetic pours/readings) — folded
+  into the full `bun run --filter @backbar/db seed`, used only by `backbar
+  bootstrap` on a fresh host. Synthetic history stays off operator bottles two
+  ways: readings backfill only the bottles inserted in that run, and pours seed
+  only when the pour table is empty (and the synthetic bindings reference only
+  starter bottles regardless). **Deploy never runs the full seed.**
 
 ## Releases & "What's New"
 
