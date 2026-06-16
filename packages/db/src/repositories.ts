@@ -2,6 +2,7 @@ import {
   Bottle,
   Category,
   depletePour,
+  FlavorProfile,
   Node,
   Pour,
   Product,
@@ -12,7 +13,10 @@ import {
   SensorChannel,
   statusAfterDepletion,
   type BottleDepletion,
+  type IngredientSubstitute,
+  type PairingEdge,
   type PourBinding,
+  type RootTemplate,
 } from "@backbar/core";
 import type { DB } from "./client";
 import { uuidv7 } from "./ids";
@@ -849,5 +853,146 @@ export const queries = (db: DB) => ({
         []
       >("SELECT * FROM shopping_list ORDER BY name")
       .all();
+  },
+});
+
+// ─── flavor grounding (corpus tables; specs/ai-grounding-corpus.md) ────────
+
+interface FlavorProfileRow {
+  ref: string;
+  ref_type: string;
+  descriptors: string;
+  axes: string;
+  typical_abv: number;
+  intensity: number;
+  role: string;
+  notes: string | null;
+}
+
+function flavorProfileFromRow(r: FlavorProfileRow): FlavorProfile {
+  return FlavorProfile.parse({
+    ref: r.ref,
+    ref_type: r.ref_type,
+    descriptors: parseJson<string[]>(r.descriptors, []),
+    axes: parseJson(r.axes, {}),
+    typical_abv: r.typical_abv,
+    intensity: r.intensity,
+    role: r.role,
+    notes: r.notes ?? undefined,
+  });
+}
+
+export const flavorProfiles = (db: DB) => ({
+  upsert(p: FlavorProfile): void {
+    const parsed = FlavorProfile.parse(p);
+    db.run(
+      `INSERT INTO flavor_profile (ref, ref_type, descriptors, axes, typical_abv, intensity, role, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(ref) DO UPDATE SET
+         ref_type=excluded.ref_type, descriptors=excluded.descriptors, axes=excluded.axes,
+         typical_abv=excluded.typical_abv, intensity=excluded.intensity, role=excluded.role, notes=excluded.notes`,
+      [
+        parsed.ref,
+        parsed.ref_type,
+        json(parsed.descriptors),
+        json(parsed.axes),
+        parsed.typical_abv,
+        parsed.intensity,
+        parsed.role,
+        parsed.notes ?? null,
+      ],
+    );
+  },
+  get(ref: string): FlavorProfile | null {
+    const row = db.query<FlavorProfileRow, [string]>("SELECT * FROM flavor_profile WHERE ref = ?").get(ref);
+    return row ? flavorProfileFromRow(row) : null;
+  },
+  list(): FlavorProfile[] {
+    return db.query<FlavorProfileRow, []>("SELECT * FROM flavor_profile ORDER BY ref").all().map(flavorProfileFromRow);
+  },
+});
+
+export const flavorPairings = (db: DB) => ({
+  /** Set the co-occurrence signal without disturbing molecular (and vice-versa). */
+  setCooccurrence(a: string, b: string, score: number): void {
+    const [x, y] = a <= b ? [a, b] : [b, a];
+    db.run(
+      `INSERT INTO flavor_pairing (a, b, cooccurrence) VALUES (?, ?, ?)
+       ON CONFLICT(a, b) DO UPDATE SET cooccurrence=excluded.cooccurrence`,
+      [x, y, score],
+    );
+  },
+  setMolecular(a: string, b: string, score: number): void {
+    const [x, y] = a <= b ? [a, b] : [b, a];
+    db.run(
+      `INSERT INTO flavor_pairing (a, b, molecular) VALUES (?, ?, ?)
+       ON CONFLICT(a, b) DO UPDATE SET molecular=excluded.molecular`,
+      [x, y, score],
+    );
+  },
+  get(a: string, b: string): PairingEdge | null {
+    const [x, y] = a <= b ? [a, b] : [b, a];
+    const row = db
+      .query<{ a: string; b: string; cooccurrence: number | null; molecular: number | null }, [string, string]>(
+        "SELECT * FROM flavor_pairing WHERE a = ? AND b = ?",
+      )
+      .get(x, y);
+    return row ? { a: row.a, b: row.b, cooccurrence: row.cooccurrence, molecular: row.molecular } : null;
+  },
+  /** Every edge touching `ref` (either side), partner first. */
+  forRef(ref: string): { partner: string; cooccurrence: number | null; molecular: number | null }[] {
+    return db
+      .query<
+        { partner: string; cooccurrence: number | null; molecular: number | null },
+        [string, string, string]
+      >(
+        `SELECT CASE WHEN a = ? THEN b ELSE a END AS partner, cooccurrence, molecular
+         FROM flavor_pairing WHERE a = ? OR b = ?`,
+      )
+      .all(ref, ref, ref);
+  },
+});
+
+export const ingredientSubstitutes = (db: DB) => ({
+  add(s: IngredientSubstitute): void {
+    db.run(
+      `INSERT OR REPLACE INTO ingredient_substitute (ref, substitute_ref, note) VALUES (?, ?, ?)`,
+      [s.ref, s.substitute_ref, s.note ?? null],
+    );
+  },
+  forRef(ref: string): IngredientSubstitute[] {
+    return db
+      .query<{ ref: string; substitute_ref: string; note: string | null }, [string]>(
+        "SELECT * FROM ingredient_substitute WHERE ref = ?",
+      )
+      .all(ref)
+      .map((r) => ({ ref: r.ref, substitute_ref: r.substitute_ref, note: r.note ?? undefined }));
+  },
+});
+
+export const rootTemplates = (db: DB) => ({
+  upsert(t: RootTemplate): void {
+    db.run(
+      `INSERT OR REPLACE INTO root_template (root, family, skeleton, method, ratio, roles, derived)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [t.root, t.family, t.skeleton, t.method, json(t.ratio), json(t.roles), json(t.derived)],
+    );
+  },
+  list(): RootTemplate[] {
+    return db
+      .query<
+        { root: string; family: string; skeleton: string; method: string; ratio: string; roles: string; derived: string },
+        []
+      >("SELECT * FROM root_template ORDER BY root")
+      .all()
+      .map((r) => ({
+        root: r.root,
+        family: r.family,
+        skeleton: r.skeleton,
+        method: r.method as RootTemplate["method"],
+        ratio: parseJson<number[]>(r.ratio, []),
+        roles: parseJson<RootTemplate["roles"]>(r.roles, []),
+        derived: parseJson<string[]>(r.derived, []),
+      }));
   },
 });

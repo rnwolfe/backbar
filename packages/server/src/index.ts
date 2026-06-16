@@ -26,6 +26,13 @@ export {
   WebhookCfg,
 } from "./webhook";
 export { GeneratedSpec, IdeateRequest, PhotoImportRequest } from "./ai/schema";
+export { buildTools, type MixologyTools } from "./ai/tools";
+export {
+  resolveBalanceIngredients,
+  resolveProfile,
+  resolveRoles,
+  type ToolIngredient,
+} from "./ai/tools/resolve";
 export { buildGuestMenu } from "./routes/menu";
 export {
   attachSubscriber,

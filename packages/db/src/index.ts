@@ -22,10 +22,17 @@ export {
   sensorChannels,
   nodes,
   queries,
+  flavorProfiles,
+  flavorPairings,
+  ingredientSubstitutes,
+  rootTemplates,
   type FeatureFlagOverride,
   type PourApplyInput,
   type PourApplyResult,
 } from "./repositories";
+export { seedFlavor, deriveCooccurrence, type FlavorSeedReport } from "./seedFlavor";
+export { FLAVOR_PROFILES } from "../seed/flavor/profiles";
+export { SUBSTITUTES } from "../seed/flavor/substitutes";
 export {
   seed,
   CANON_RECIPES,

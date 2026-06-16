@@ -1,0 +1,626 @@
+{
+  "_source": "Ahn et al. 2011 flavor network (CC BY 4.0), Zenodo 11449658",
+  "_note": "Exploratory molecular pairing — shared aroma-compound Jaccard. See specs/ai-grounding-corpus.md §B.",
+  "edges": [
+    {
+      "a": "aged-rum",
+      "b": "bourbon",
+      "molecular": 0.3707
+    },
+    {
+      "a": "aged-rum",
+      "b": "rye",
+      "molecular": 0.3707
+    },
+    {
+      "a": "aged-rum",
+      "b": "scotch",
+      "molecular": 0.3707
+    },
+    {
+      "a": "blackstrap-rum",
+      "b": "bourbon",
+      "molecular": 0.3707
+    },
+    {
+      "a": "blackstrap-rum",
+      "b": "rye",
+      "molecular": 0.3707
+    },
+    {
+      "a": "blackstrap-rum",
+      "b": "scotch",
+      "molecular": 0.3707
+    },
+    {
+      "a": "bourbon",
+      "b": "jamaican-rum",
+      "molecular": 0.3707
+    },
+    {
+      "a": "bourbon",
+      "b": "rum",
+      "molecular": 0.3707
+    },
+    {
+      "a": "bourbon",
+      "b": "white-rum",
+      "molecular": 0.3707
+    },
+    {
+      "a": "jamaican-rum",
+      "b": "rye",
+      "molecular": 0.3707
+    },
+    {
+      "a": "jamaican-rum",
+      "b": "scotch",
+      "molecular": 0.3707
+    },
+    {
+      "a": "rum",
+      "b": "rye",
+      "molecular": 0.3707
+    },
+    {
+      "a": "rum",
+      "b": "scotch",
+      "molecular": 0.3707
+    },
+    {
+      "a": "rye",
+      "b": "white-rum",
+      "molecular": 0.3707
+    },
+    {
+      "a": "scotch",
+      "b": "white-rum",
+      "molecular": 0.3707
+    },
+    {
+      "a": "bourbon",
+      "b": "wine",
+      "molecular": 0.3448
+    },
+    {
+      "a": "rye",
+      "b": "wine",
+      "molecular": 0.3448
+    },
+    {
+      "a": "scotch",
+      "b": "wine",
+      "molecular": 0.3448
+    },
+    {
+      "a": "aged-rum",
+      "b": "wine",
+      "molecular": 0.3348
+    },
+    {
+      "a": "blackstrap-rum",
+      "b": "wine",
+      "molecular": 0.3348
+    },
+    {
+      "a": "jamaican-rum",
+      "b": "wine",
+      "molecular": 0.3348
+    },
+    {
+      "a": "rum",
+      "b": "wine",
+      "molecular": 0.3348
+    },
+    {
+      "a": "white-rum",
+      "b": "wine",
+      "molecular": 0.3348
+    },
+    {
+      "a": "pineapple",
+      "b": "wine",
+      "molecular": 0.2526
+    },
+    {
+      "a": "pineapple-juice",
+      "b": "wine",
+      "molecular": 0.2526
+    },
+    {
+      "a": "aged-rum",
+      "b": "pineapple",
+      "molecular": 0.2179
+    },
+    {
+      "a": "aged-rum",
+      "b": "pineapple-juice",
+      "molecular": 0.2179
+    },
+    {
+      "a": "blackstrap-rum",
+      "b": "pineapple",
+      "molecular": 0.2179
+    },
+    {
+      "a": "blackstrap-rum",
+      "b": "pineapple-juice",
+      "molecular": 0.2179
+    },
+    {
+      "a": "jamaican-rum",
+      "b": "pineapple",
+      "molecular": 0.2179
+    },
+    {
+      "a": "jamaican-rum",
+      "b": "pineapple-juice",
+      "molecular": 0.2179
+    },
+    {
+      "a": "pineapple",
+      "b": "rum",
+      "molecular": 0.2179
+    },
+    {
+      "a": "pineapple",
+      "b": "white-rum",
+      "molecular": 0.2179
+    },
+    {
+      "a": "pineapple-juice",
+      "b": "rum",
+      "molecular": 0.2179
+    },
+    {
+      "a": "pineapple-juice",
+      "b": "white-rum",
+      "molecular": 0.2179
+    },
+    {
+      "a": "bourbon",
+      "b": "pineapple",
+      "molecular": 0.2135
+    },
+    {
+      "a": "bourbon",
+      "b": "pineapple-juice",
+      "molecular": 0.2135
+    },
+    {
+      "a": "pineapple",
+      "b": "rye",
+      "molecular": 0.2135
+    },
+    {
+      "a": "pineapple",
+      "b": "scotch",
+      "molecular": 0.2135
+    },
+    {
+      "a": "pineapple-juice",
+      "b": "rye",
+      "molecular": 0.2135
+    },
+    {
+      "a": "pineapple-juice",
+      "b": "scotch",
+      "molecular": 0.2135
+    },
+    {
+      "a": "gin",
+      "b": "mint",
+      "molecular": 0.1458
+    },
+    {
+      "a": "brandy",
+      "b": "wine",
+      "molecular": 0.1343
+    },
+    {
+      "a": "bourbon",
+      "b": "grapefruit",
+      "molecular": 0.1088
+    },
+    {
+      "a": "grapefruit",
+      "b": "rye",
+      "molecular": 0.1088
+    },
+    {
+      "a": "grapefruit",
+      "b": "scotch",
+      "molecular": 0.1088
+    },
+    {
+      "a": "grapefruit",
+      "b": "wine",
+      "molecular": 0.0947
+    },
+    {
+      "a": "aged-rum",
+      "b": "grapefruit",
+      "molecular": 0.0943
+    },
+    {
+      "a": "blackstrap-rum",
+      "b": "grapefruit",
+      "molecular": 0.0943
+    },
+    {
+      "a": "grapefruit",
+      "b": "jamaican-rum",
+      "molecular": 0.0943
+    },
+    {
+      "a": "grapefruit",
+      "b": "rum",
+      "molecular": 0.0943
+    },
+    {
+      "a": "grapefruit",
+      "b": "white-rum",
+      "molecular": 0.0943
+    },
+    {
+      "a": "bourbon",
+      "b": "brandy",
+      "molecular": 0.0924
+    },
+    {
+      "a": "brandy",
+      "b": "rye",
+      "molecular": 0.0924
+    },
+    {
+      "a": "brandy",
+      "b": "scotch",
+      "molecular": 0.0924
+    },
+    {
+      "a": "brandy",
+      "b": "pineapple",
+      "molecular": 0.0806
+    },
+    {
+      "a": "brandy",
+      "b": "pineapple-juice",
+      "molecular": 0.0806
+    },
+    {
+      "a": "grapefruit",
+      "b": "pineapple",
+      "molecular": 0.0774
+    },
+    {
+      "a": "grapefruit",
+      "b": "pineapple-juice",
+      "molecular": 0.0774
+    },
+    {
+      "a": "aged-rum",
+      "b": "brandy",
+      "molecular": 0.0757
+    },
+    {
+      "a": "blackstrap-rum",
+      "b": "brandy",
+      "molecular": 0.0757
+    },
+    {
+      "a": "brandy",
+      "b": "jamaican-rum",
+      "molecular": 0.0757
+    },
+    {
+      "a": "brandy",
+      "b": "rum",
+      "molecular": 0.0757
+    },
+    {
+      "a": "brandy",
+      "b": "white-rum",
+      "molecular": 0.0757
+    },
+    {
+      "a": "aged-rum",
+      "b": "mint",
+      "molecular": 0.068
+    },
+    {
+      "a": "blackstrap-rum",
+      "b": "mint",
+      "molecular": 0.068
+    },
+    {
+      "a": "jamaican-rum",
+      "b": "mint",
+      "molecular": 0.068
+    },
+    {
+      "a": "mint",
+      "b": "rum",
+      "molecular": 0.068
+    },
+    {
+      "a": "mint",
+      "b": "white-rum",
+      "molecular": 0.068
+    },
+    {
+      "a": "bourbon",
+      "b": "gin",
+      "molecular": 0.0642
+    },
+    {
+      "a": "gin",
+      "b": "rye",
+      "molecular": 0.0642
+    },
+    {
+      "a": "gin",
+      "b": "scotch",
+      "molecular": 0.0642
+    },
+    {
+      "a": "gin",
+      "b": "pineapple",
+      "molecular": 0.0619
+    },
+    {
+      "a": "gin",
+      "b": "pineapple-juice",
+      "molecular": 0.0619
+    },
+    {
+      "a": "mint",
+      "b": "wine",
+      "molecular": 0.0613
+    },
+    {
+      "a": "mint",
+      "b": "pineapple",
+      "molecular": 0.0544
+    },
+    {
+      "a": "mint",
+      "b": "pineapple-juice",
+      "molecular": 0.0544
+    },
+    {
+      "a": "gin",
+      "b": "wine",
+      "molecular": 0.0534
+    },
+    {
+      "a": "aged-rum",
+      "b": "gin",
+      "molecular": 0.0511
+    },
+    {
+      "a": "blackstrap-rum",
+      "b": "gin",
+      "molecular": 0.0511
+    },
+    {
+      "a": "gin",
+      "b": "jamaican-rum",
+      "molecular": 0.0511
+    },
+    {
+      "a": "gin",
+      "b": "rum",
+      "molecular": 0.0511
+    },
+    {
+      "a": "gin",
+      "b": "white-rum",
+      "molecular": 0.0511
+    },
+    {
+      "a": "bourbon",
+      "b": "mint",
+      "molecular": 0.0272
+    },
+    {
+      "a": "mint",
+      "b": "rye",
+      "molecular": 0.0272
+    },
+    {
+      "a": "mint",
+      "b": "scotch",
+      "molecular": 0.0272
+    },
+    {
+      "a": "bourbon",
+      "b": "orgeat",
+      "molecular": 0.0268
+    },
+    {
+      "a": "orgeat",
+      "b": "rye",
+      "molecular": 0.0268
+    },
+    {
+      "a": "orgeat",
+      "b": "scotch",
+      "molecular": 0.0268
+    },
+    {
+      "a": "brandy",
+      "b": "grapefruit",
+      "molecular": 0.0253
+    },
+    {
+      "a": "lime",
+      "b": "mint",
+      "molecular": 0.0217
+    },
+    {
+      "a": "lime-juice",
+      "b": "mint",
+      "molecular": 0.0217
+    },
+    {
+      "a": "lemon",
+      "b": "mint",
+      "molecular": 0.0213
+    },
+    {
+      "a": "lemon-juice",
+      "b": "mint",
+      "molecular": 0.0213
+    },
+    {
+      "a": "grapefruit",
+      "b": "mint",
+      "molecular": 0.02
+    },
+    {
+      "a": "grapefruit",
+      "b": "lime",
+      "molecular": 0.0172
+    },
+    {
+      "a": "grapefruit",
+      "b": "lime-juice",
+      "molecular": 0.0172
+    },
+    {
+      "a": "gin",
+      "b": "grapefruit",
+      "molecular": 0.0152
+    },
+    {
+      "a": "bourbon",
+      "b": "lime",
+      "molecular": 0.0093
+    },
+    {
+      "a": "bourbon",
+      "b": "lime-juice",
+      "molecular": 0.0093
+    },
+    {
+      "a": "lime",
+      "b": "rye",
+      "molecular": 0.0093
+    },
+    {
+      "a": "lime",
+      "b": "scotch",
+      "molecular": 0.0093
+    },
+    {
+      "a": "lime-juice",
+      "b": "rye",
+      "molecular": 0.0093
+    },
+    {
+      "a": "lime-juice",
+      "b": "scotch",
+      "molecular": 0.0093
+    },
+    {
+      "a": "orgeat",
+      "b": "pineapple",
+      "molecular": 0.0085
+    },
+    {
+      "a": "orgeat",
+      "b": "pineapple-juice",
+      "molecular": 0.0085
+    },
+    {
+      "a": "lime",
+      "b": "wine",
+      "molecular": 0.0078
+    },
+    {
+      "a": "lime-juice",
+      "b": "wine",
+      "molecular": 0.0078
+    },
+    {
+      "a": "orgeat",
+      "b": "wine",
+      "molecular": 0.0074
+    },
+    {
+      "a": "aged-rum",
+      "b": "lime",
+      "molecular": 0.0057
+    },
+    {
+      "a": "aged-rum",
+      "b": "lime-juice",
+      "molecular": 0.0057
+    },
+    {
+      "a": "blackstrap-rum",
+      "b": "lime",
+      "molecular": 0.0057
+    },
+    {
+      "a": "blackstrap-rum",
+      "b": "lime-juice",
+      "molecular": 0.0057
+    },
+    {
+      "a": "jamaican-rum",
+      "b": "lime",
+      "molecular": 0.0057
+    },
+    {
+      "a": "jamaican-rum",
+      "b": "lime-juice",
+      "molecular": 0.0057
+    },
+    {
+      "a": "lime",
+      "b": "rum",
+      "molecular": 0.0057
+    },
+    {
+      "a": "lime",
+      "b": "white-rum",
+      "molecular": 0.0057
+    },
+    {
+      "a": "lime-juice",
+      "b": "rum",
+      "molecular": 0.0057
+    },
+    {
+      "a": "lime-juice",
+      "b": "white-rum",
+      "molecular": 0.0057
+    },
+    {
+      "a": "aged-rum",
+      "b": "orgeat",
+      "molecular": 0.0055
+    },
+    {
+      "a": "blackstrap-rum",
+      "b": "orgeat",
+      "molecular": 0.0055
+    },
+    {
+      "a": "jamaican-rum",
+      "b": "orgeat",
+      "molecular": 0.0055
+    },
+    {
+      "a": "orgeat",
+      "b": "rum",
+      "molecular": 0.0055
+    },
+    {
+      "a": "orgeat",
+      "b": "white-rum",
+      "molecular": 0.0055
+    }
+  ]
+}
