@@ -39,6 +39,8 @@ import { Pours } from "./views/Pours";
 import { Recipes } from "./views/Recipes";
 import { WhatsNewModal } from "./release/WhatsNewModal";
 import { TokenGate } from "./TokenGate";
+import { ChatDock } from "./chat/ChatDock";
+import type { ChatContext } from "./chat/types";
 import { Settings } from "./views/Settings";
 import { Shelf } from "./views/Shelf";
 
@@ -84,6 +86,13 @@ export function App() {
   const bottleMatch = useMatch("/bottles/:id");
   const productMatch = useMatch("/catalog/:id");
   const recipeMatch = useMatch("/recipes/:id");
+  // What the agent should assume is in focus — current screen + any open detail.
+  const chatContext: ChatContext = useMemo(() => {
+    if (recipeMatch?.params.id) return { view, entity: { kind: "recipe", id: recipeMatch.params.id } };
+    if (bottleMatch?.params.id) return { view, entity: { kind: "bottle", id: bottleMatch.params.id } };
+    if (productMatch?.params.id) return { view, entity: { kind: "product", id: productMatch.params.id } };
+    return { view };
+  }, [view, recipeMatch, bottleMatch, productMatch]);
   const activeBottleId = bottleMatch?.params.id ?? null;
   const activeProductId = productMatch?.params.id ?? null;
   const activeRecipeId = recipeMatch?.params.id ?? null;
@@ -105,6 +114,7 @@ export function App() {
 
   // ── Ephemeral overlay state (not URL-bound). ────────────────────────────
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [activeCalibrate, setActiveCalibrate] = useState<{ deviceId: string; channel: number } | null>(null);
   const [activeTare, setActiveTare] = useState<DecoratedBottle | null>(null);
@@ -185,6 +195,10 @@ export function App() {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
         setPaletteOpen(true);
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "j") {
+        e.preventDefault();
+        setChatOpen((o) => !o);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -425,6 +439,39 @@ export function App() {
 
         <WhatsNewModal />
         <TokenGate />
+
+        {/* Agent dock — first-class, context-aware. Launch via ⌘J or the
+            floating button; closes back to the console it sits beside. */}
+        <ChatDock
+          open={chatOpen}
+          onClose={() => setChatOpen(false)}
+          context={chatContext}
+          notify={pushToast}
+        />
+        {chatOpen ? null : (
+          <button
+            type="button"
+            onClick={() => setChatOpen(true)}
+            title="Ask the bar (⌘J)"
+            style={{
+              position: "fixed",
+              right: 18,
+              bottom: viewport.isMobile ? "calc(70px + var(--safe-bottom, 0px))" : 18,
+              zIndex: 44,
+              width: 46,
+              height: 46,
+              borderRadius: "50%",
+              background: accentColor,
+              color: "#05080b",
+              border: "none",
+              boxShadow: "0 8px 28px rgba(0,0,0,0.5)",
+              cursor: "pointer",
+              fontSize: 20,
+            }}
+          >
+            ✦
+          </button>
+        )}
 
         {viewport.isMobile ? (
           <BottomNav
