@@ -996,3 +996,74 @@ export const rootTemplates = (db: DB) => ({
       }));
   },
 });
+
+// ─── chat threads (agentic chat persistence; specs/ai-chat-spike.md) ───────
+
+export interface ChatThreadRow {
+  id: string;
+  title: string | null;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface ChatMessageRow {
+  id: string;
+  thread_id: string;
+  role: string;
+  parts: string; // JSON
+  metadata: string | null; // JSON
+  seq: number;
+  created_at: number;
+}
+
+export const chatThreads = (db: DB) => ({
+  upsert(t: { id: string; title?: string | null; created_at?: number; updated_at?: number }): void {
+    const now = Date.now();
+    db.run(
+      `INSERT INTO chat_thread (id, title, created_at, updated_at) VALUES (?, ?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET
+         title = COALESCE(excluded.title, chat_thread.title),
+         updated_at = excluded.updated_at`,
+      [t.id, t.title ?? null, t.created_at ?? now, t.updated_at ?? now],
+    );
+  },
+  get(id: string): ChatThreadRow | null {
+    return db.query<ChatThreadRow, [string]>("SELECT * FROM chat_thread WHERE id = ?").get(id) ?? null;
+  },
+  list(limit = 50): ChatThreadRow[] {
+    return db
+      .query<ChatThreadRow, [number]>("SELECT * FROM chat_thread ORDER BY updated_at DESC LIMIT ?")
+      .all(limit);
+  },
+  delete(id: string): void {
+    db.run("DELETE FROM chat_thread WHERE id = ?", [id]);
+  },
+});
+
+export const chatMessages = (db: DB) => ({
+  /** Replace the whole thread's messages in one transaction (idempotent save). */
+  replaceAll(
+    threadId: string,
+    msgs: { id: string; role: string; parts: string; metadata?: string | null; created_at?: number }[],
+  ): void {
+    db.transaction(() => {
+      db.run("DELETE FROM chat_message WHERE thread_id = ?", [threadId]);
+      let seq = 0;
+      for (const m of msgs) {
+        db.run(
+          `INSERT INTO chat_message (id, thread_id, role, parts, metadata, seq, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [m.id, threadId, m.role, m.parts, m.metadata ?? null, seq, m.created_at ?? Date.now()],
+        );
+        seq += 1;
+      }
+    })();
+  },
+  forThread(threadId: string): ChatMessageRow[] {
+    return db
+      .query<ChatMessageRow, [string]>(
+        "SELECT * FROM chat_message WHERE thread_id = ? ORDER BY seq",
+      )
+      .all(threadId);
+  },
+});

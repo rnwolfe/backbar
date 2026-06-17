@@ -31,9 +31,8 @@ import {
 } from "@backbar/core";
 import { flavorPairings, flavorProfiles, ingredientSubstitutes, products } from "@backbar/db";
 import type { Deps } from "../../deps";
-import { buildRefSet } from "../prompts";
-import { loadInventory } from "../../makeable";
 import {
+  inStockRefs as inStockRefsOf,
   resolveBalanceIngredients,
   resolveProfile,
   resolveRoles,
@@ -96,23 +95,10 @@ export function buildTools(deps: Deps) {
   const pairingsRepo = flavorPairings(deps.db);
   const subsRepo = ingredientSubstitutes(deps.db);
 
-  /**
-   * Refs currently in stock (product ids ∪ categories ∪ in-stock flavor_tags).
-   * Memoized for the life of this per-request registry — multiple tools may
-   * ask in one generation loop, and inventory is stable within a request.
-   */
+  // Memoized for the life of this per-request registry — multiple tools may
+  // ask in one generation loop, and inventory is stable within a request.
   let stockCache: Set<string> | null = null;
-  const inStockRefs = (): Set<string> => {
-    if (stockCache) return stockCache;
-    const inv = loadInventory(deps.db);
-    const set = buildRefSet(inv);
-    for (const b of inv) {
-      if (b.status === "empty" || b.status === "archived") continue;
-      for (const t of b.product.flavor_tags ?? []) set.add(t);
-    }
-    stockCache = set;
-    return set;
-  };
+  const inStockRefs = (): Set<string> => (stockCache ??= inStockRefsOf(deps));
 
   const descriptorSim = (a: string, b: string): number | null => {
     const pa = resolveProfile(deps, a);

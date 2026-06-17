@@ -14,6 +14,29 @@ import {
 } from "@backbar/core";
 import { flavorProfiles, products } from "@backbar/db";
 import type { Deps } from "../../deps";
+import { loadInventory } from "../../makeable";
+import { buildRefSet } from "../prompts";
+
+/**
+ * Refs currently in stock: product ids ∪ categories ∪ in-stock flavor tags.
+ * Shared by the tool registry and the chat propose-tools so the makeability
+ * check is identical everywhere.
+ */
+export function inStockRefs(deps: Deps): Set<string> {
+  const inv = loadInventory(deps.db);
+  const set = buildRefSet(inv);
+  for (const b of inv) {
+    if (b.status === "empty" || b.status === "archived") continue;
+    for (const t of b.product.flavor_tags ?? []) set.add(t);
+    // Namespaced product_tag rows back `ref_type:"tag"` matching in the
+    // makeability engine — surface both the bare value and `namespace:value`.
+    for (const t of b.tags ?? []) {
+      set.add(t.value);
+      set.add(`${t.namespace}:${t.value}`);
+    }
+  }
+  return set;
+}
 
 export interface ToolIngredient {
   ref: string;

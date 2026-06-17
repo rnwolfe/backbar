@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import type { UIMessage } from "ai";
 import { coverage, type Product } from "@backbar/core";
 import {
   products as productsRepo,
@@ -7,6 +8,8 @@ import {
 import type { Deps } from "../deps";
 import { err, parseBody } from "../errors";
 import { loadInventory } from "../makeable";
+import { ChatRequest, streamChat } from "../ai/chat";
+import { listThreads, loadThread, saveThread } from "../ai/chat-store";
 import { ideate } from "../ai/ideate";
 import { importPhoto } from "../ai/import-photo";
 import { importInventory } from "../ai/import-inventory";
@@ -136,6 +139,32 @@ export function aiRouter(deps: Deps, opts: { hasGateway: boolean } = { hasGatewa
     }
     return err(c, 502, "extract-failed", result.detail);
   });
+
+  // POST /ai/chat — streaming agentic bartender (AI-SDK UI message stream).
+  // Returns a UI-message-stream Response consumed by the operator-ui chat dock.
+  r.post("/chat", async (c) => {
+    if (!opts.hasGateway) return err(c, 503, "ai-disabled", "AI_GATEWAY_API_KEY not set");
+    const parsed = await parseBody(c, ChatRequest);
+    if (parsed.error) return parsed.response;
+    const threadId = c.req.query("thread") ?? undefined;
+    try {
+      return streamChat(deps, {
+        messages: parsed.data.messages as UIMessage[],
+        context: parsed.data.context,
+        onFinish: threadId ? (messages) => saveThread(deps, threadId, messages) : undefined,
+      });
+    } catch (e) {
+      // ai-disabled is reserved for "no gateway model"; anything else is a 500.
+      if (e instanceof Error && e.message === "ai-disabled") {
+        return err(c, 503, "ai-disabled", "no gateway model available");
+      }
+      return err(c, 500, "chat-failed", e instanceof Error ? e.message : "chat error");
+    }
+  });
+
+  // Thread history for the dock.
+  r.get("/chat/threads", (c) => c.json(listThreads(deps)));
+  r.get("/chat/threads/:id", (c) => c.json(loadThread(deps, c.req.param("id"))));
 
   return r;
 }
