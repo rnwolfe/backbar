@@ -13,10 +13,11 @@
 ## 0. TL;DR
 
 - **Where it lives:** a persistent, **context-aware chat dock** (right rail on
-  desktop, bottom sheet on mobile) launchable from every view via the TopBar +
-  ⌘K — not a destination you navigate *to*, an assistant that's *always there*
-  and knows what you're looking at. Its outputs are **live, actionable links**
-  into the same objects the console shows.
+  desktop, bottom sheet on mobile) launchable from every view via **⌘J** and a
+  floating launcher — not a destination you navigate *to*, an assistant that's
+  *always there* and knows what you're looking at. Its outputs are **live,
+  actionable links** into the same objects the console shows. *(Shipped: ⌘J +
+  floating button; a ⌘K-palette entry is a follow-up.)*
 - **What it's for (the core):** five operator jobs — *make something now*,
   *curate the library*, *manage inventory*, *teach/explain*, *run service*. §2.
 - **How it's built:** `POST /ai/chat` = AI-SDK v5 `streamText({ tools:
@@ -113,8 +114,8 @@ than a novelty on one screen.
 
 - **Persistent dock, not a page.** Desktop: a toggleable right rail (~360–400px,
   below the 46px TopBar, `z:20`, beside the existing TweaksPanel). Mobile: a
-  full-height bottom sheet above the BottomNav. Launch from a TopBar chat icon +
-  a ⌘K command ("Ask Backbar"). State lives at the App root
+  full-height bottom sheet above the BottomNav. Launch via **⌘J** + a floating
+  button ("Ask Backbar"). State lives at the App root
   (`App.tsx`), so it survives view navigation.
 - **Context-aware.** The current view and any open entity are passed as system
   context ("operator is viewing recipe *Penicillin*", "selected bottle
@@ -263,7 +264,7 @@ state→badge mapping. Keeps the console coherent and avoids a UI-kit dependency
 
 ## 8. Phased plan
 **P1 — Read-only streaming chat (the foundation).** `POST /ai/chat` over
-`buildTools`; the chat dock (rail + sheet) launched from TopBar/⌘K; render text +
+`buildTools`; the chat dock (rail + sheet) launched via ⌘J + a floating button; render text +
 reasoning + **tool-call cards** + **entity chips/hovercards**; context-awareness
 of the current view/entity. Delivers Jobs 1 & 4 fully and the read half of 2/3/5.
 *No persistence, no writes — smallest shippable first-class experience.*

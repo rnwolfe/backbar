@@ -35,8 +35,17 @@ export const ChatContext = z
   .optional();
 export type ChatContext = z.infer<typeof ChatContext>;
 
+/** Boundary validation for incoming UI messages — minimal but real (the full
+ *  UIMessage union lives in the AI SDK; we validate the load-bearing shape). */
+const UIMessageInput = z.object({
+  id: z.string().optional(),
+  role: z.enum(["system", "user", "assistant"]),
+  parts: z.array(z.object({ type: z.string() }).passthrough()),
+  metadata: z.unknown().optional(),
+});
+
 export const ChatRequest = z.object({
-  messages: z.array(z.any()),
+  messages: z.array(UIMessageInput),
   context: ChatContext,
 });
 
@@ -72,10 +81,12 @@ function proposeTools(deps: Deps) {
       inputSchema: RecipeProposal,
       execute: async (proposal) => {
         const stock = inStockRefs(deps);
-        const missing = proposal.ingredients
-          .filter((i) => i.ref_type !== "freeform")
-          .map((i) => i.ref)
-          .filter((r) => !stock.has(r));
+        // Optional + garnish ingredients never gate makeability (matches the
+        // core makeability engine), and freeform pantry items don't draw a bottle.
+        const required = proposal.ingredients.filter(
+          (i) => i.ref_type !== "freeform" && !i.optional && !i.garnish,
+        );
+        const missing = required.map((i) => i.ref).filter((r) => !stock.has(r));
         const balanceIngredients = resolveBalanceIngredients(
           deps,
           proposal.ingredients

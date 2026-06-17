@@ -147,7 +147,7 @@ export function ProposalCard({ toolName, output, notify }: Props) {
     const id = String(o.bottle_id);
     const apply = () =>
       run("86'd", async () => {
-        await api.patchBottle(id, { status: "empty" } as never);
+        await api.patchBottle(id, { status: "empty" });
         await store.hydrate();
         notify(`86'd ${id}`);
       });

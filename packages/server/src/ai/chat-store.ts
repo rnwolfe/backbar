@@ -35,14 +35,23 @@ export function saveThread(deps: Deps, threadId: string, messages: UIMessage[]):
 }
 
 export function loadThread(deps: Deps, threadId: string): UIMessage[] {
-  return chatMessages(deps.db)
-    .forThread(threadId)
-    .map((row) => ({
-      id: row.id,
-      role: row.role as UIMessage["role"],
-      parts: JSON.parse(row.parts),
-      ...(row.metadata ? { metadata: JSON.parse(row.metadata) } : {}),
-    }));
+  // Defensive: a corrupted/legacy row must not crash the whole thread load.
+  // Rows that fail to parse are skipped (a deeper option is the AI SDK's
+  // `validateUIMessages` to handle tool-schema drift — a future hardening).
+  const out: UIMessage[] = [];
+  for (const row of chatMessages(deps.db).forThread(threadId)) {
+    try {
+      out.push({
+        id: row.id,
+        role: row.role as UIMessage["role"],
+        parts: JSON.parse(row.parts),
+        ...(row.metadata ? { metadata: JSON.parse(row.metadata) } : {}),
+      });
+    } catch {
+      // skip the unparseable row
+    }
+  }
+  return out;
 }
 
 export function listThreads(deps: Deps) {

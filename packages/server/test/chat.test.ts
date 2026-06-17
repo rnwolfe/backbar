@@ -41,6 +41,20 @@ describe("buildChatTools", () => {
     expect(out.balance.sour).toBeGreaterThan(0.1);
   });
 
+  test("propose_recipe ignores optional/garnish ingredients for makeability", async () => {
+    const tools = buildChatTools(ctx());
+    const out = (await call(tools.propose_recipe, {
+      name: "Optional test",
+      method: "stir",
+      ingredients: [
+        { ref: "rum", ref_type: "product", amount: 60, unit: "ml" },
+        { ref: "absinthe", ref_type: "product", amount: 1, unit: "dash", optional: true }, // not in stock
+      ],
+    })) as { makeable: boolean; missing: string[] };
+    expect(out.makeable).toBe(true);
+    expect(out.missing).not.toContain("absinthe");
+  });
+
   test("propose_recipe flags an off-inventory ingredient", async () => {
     const tools = buildChatTools(ctx());
     const out = (await call(tools.propose_recipe, {

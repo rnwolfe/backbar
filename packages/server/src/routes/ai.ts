@@ -144,9 +144,8 @@ export function aiRouter(deps: Deps, opts: { hasGateway: boolean } = { hasGatewa
   // Returns a UI-message-stream Response consumed by the operator-ui chat dock.
   r.post("/chat", async (c) => {
     if (!opts.hasGateway) return err(c, 503, "ai-disabled", "AI_GATEWAY_API_KEY not set");
-    const body = await c.req.json().catch(() => null);
-    const parsed = ChatRequest.safeParse(body);
-    if (!parsed.success) return err(c, 400, "validation", parsed.error.issues);
+    const parsed = await parseBody(c, ChatRequest);
+    if (parsed.error) return parsed.response;
     const threadId = c.req.query("thread") ?? undefined;
     try {
       return streamChat(deps, {
@@ -154,8 +153,12 @@ export function aiRouter(deps: Deps, opts: { hasGateway: boolean } = { hasGatewa
         context: parsed.data.context,
         onFinish: threadId ? (messages) => saveThread(deps, threadId, messages) : undefined,
       });
-    } catch {
-      return err(c, 503, "ai-disabled", "chat unavailable");
+    } catch (e) {
+      // ai-disabled is reserved for "no gateway model"; anything else is a 500.
+      if (e instanceof Error && e.message === "ai-disabled") {
+        return err(c, 503, "ai-disabled", "no gateway model available");
+      }
+      return err(c, 500, "chat-failed", e instanceof Error ? e.message : "chat error");
     }
   });
 

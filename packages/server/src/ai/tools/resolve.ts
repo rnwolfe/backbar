@@ -28,6 +28,12 @@ export function inStockRefs(deps: Deps): Set<string> {
   for (const b of inv) {
     if (b.status === "empty" || b.status === "archived") continue;
     for (const t of b.product.flavor_tags ?? []) set.add(t);
+    // Namespaced product_tag rows back `ref_type:"tag"` matching in the
+    // makeability engine — surface both the bare value and `namespace:value`.
+    for (const t of b.tags ?? []) {
+      set.add(t.value);
+      set.add(`${t.namespace}:${t.value}`);
+    }
   }
   return set;
 }
