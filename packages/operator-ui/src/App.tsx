@@ -458,18 +458,24 @@ export function App() {
               right: 18,
               bottom: viewport.isMobile ? "calc(70px + var(--safe-bottom, 0px))" : 18,
               zIndex: 44,
-              width: 46,
-              height: 46,
+              width: 52,
+              height: 52,
               borderRadius: "50%",
-              background: accentColor,
-              color: "#05080b",
-              border: "none",
-              boxShadow: "0 8px 28px rgba(0,0,0,0.5)",
+              padding: 0,
+              overflow: "hidden",
+              background: "transparent",
+              border: `2px solid ${accentColor}`,
+              boxShadow: "0 8px 28px rgba(0,0,0,0.55)",
               cursor: "pointer",
-              fontSize: 20,
             }}
           >
-            ✦
+            <img
+              src="/agent-avatar.png"
+              alt="Ask the bar"
+              width={52}
+              height={52}
+              style={{ display: "block", width: "100%", height: "100%", objectFit: "cover" }}
+            />
           </button>
         )}
 

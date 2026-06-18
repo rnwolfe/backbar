@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { UIMessage } from "ai";
 import { seedFlavor } from "@backbar/db";
 import { buildChatTools, chatSystem } from "../src/ai/chat";
-import { loadThread, saveThread } from "../src/ai/chat-store";
+import { listThreads, loadThread, saveThread } from "../src/ai/chat-store";
 import { setup } from "./_helpers";
 
 function ctx() {
@@ -99,5 +99,19 @@ describe("chat persistence", () => {
     expect(loaded.length).toBe(2);
     expect(loaded[0]!.role).toBe("user");
     expect((loaded[1]!.parts[0] as { text: string }).text).toBe("A Daiquiri.");
+  });
+
+  test("listThreads returns saved conversations with derived titles", () => {
+    const deps = ctx();
+    saveThread(deps, "ta", [
+      { id: "a1", role: "user", parts: [{ type: "text", text: "design a mezcal sour" }] },
+    ]);
+    saveThread(deps, "tb", [
+      { id: "b1", role: "user", parts: [{ type: "text", text: "what pairs with steak?" }] },
+    ]);
+    const threads = listThreads(deps);
+    expect(threads.length).toBe(2);
+    expect(threads.map((t) => t.title)).toContain("design a mezcal sour");
+    expect(threads[0]).toHaveProperty("updated_at");
   });
 });
