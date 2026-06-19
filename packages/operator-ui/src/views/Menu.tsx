@@ -30,8 +30,19 @@ export function Menu() {
   const [lastResult, setLastResult] = useState<{ url: string; count: number } | null>(null);
   const [publishError, setPublishError] = useState<string | null>(null);
   const [qrOpen, setQrOpen] = useState(false);
+  const [publicUrl, setPublicUrl] = useState<string | null>(null);
   const { isMobile } = useViewport();
-  const guestUrl = lastResult?.url ?? "https://menu.thebackbar.house";
+  const guestUrl = lastResult?.url ?? publicUrl ?? "";
+  const guestHost = guestUrl ? guestUrl.replace(/^https?:\/\//, "") : "set GUEST_PUBLIC_URL";
+
+  // The real public guest-menu URL comes from the server (GUEST_PUBLIC_URL),
+  // not a hardcoded brand placeholder.
+  useEffect(() => {
+    api
+      .menuInfo()
+      .then((info) => setPublicUrl(info.public_url))
+      .catch(() => {});
+  }, []);
 
   // Seed selection: any recipe already flagged is_published, else the first 7 makeable.
   useEffect(() => {
@@ -109,7 +120,7 @@ export function Menu() {
                 {lastResult ? `${lastResult.count} recipes` : `${published.length} ready`}
               </div>
               <div style={{ fontFamily: T.mono, fontSize: 10, color: T.inkDim, marginTop: 4 }}>
-                {lastResult?.url ?? "menu.thebackbar.house"}
+                {guestHost}
               </div>
             </div>
           </Cell>
