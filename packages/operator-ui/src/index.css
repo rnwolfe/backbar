@@ -12,10 +12,12 @@
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
     /* Bottom-nav clearance. iOS reports a generous ~34px home-indicator inset
-       in standalone (installed) PWA mode, which leaves a chunky empty band
-       under the tab bar. Cap it at 20px — enough to clear the gesture pill,
-       tight enough that the nav doesn't look "off". Scales to 0 in-browser. */
-    --nav-safe-bottom: min(var(--safe-bottom, 0px), 20px);
+       in standalone (installed) PWA mode, which reserves a chunky dead band
+       under the tab icons. Cap at 0.5rem — a little breathing room while the
+       bar sits close to the true screen edge. (See the 100lvh note on the App
+       shell: the *real* bottom gap was vh/dvh resolving short of the physical
+       screen, not this inset.) Scales to 0 in-browser. */
+    --nav-safe-bottom: min(var(--safe-bottom, 0px), 0.5rem);
   }
   html,
   body,

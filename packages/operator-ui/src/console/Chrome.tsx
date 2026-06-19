@@ -410,10 +410,10 @@ export function BottomNav({ view, onNav, accentColor, hiddenTabs }: BottomNavPro
     <>
       <nav
         style={{
-          position: "fixed",
-          left: 0,
-          right: 0,
-          bottom: 0,
+          // In-flow (not fixed): sits at the bottom of the 100lvh app shell so
+          // it reaches the true physical screen edge in an installed PWA (see
+          // the App-shell 100lvh note). flexShrink:0 keeps it from collapsing.
+          flexShrink: 0,
           paddingBottom: "var(--nav-safe-bottom, 0px)",
           background: T.surface,
           borderTop: `1px solid ${T.hairline}`,
