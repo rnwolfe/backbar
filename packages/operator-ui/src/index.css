@@ -22,7 +22,10 @@
   html,
   body,
   #root {
-    height: 100%;
+    /* 100lvh, not 100%: in an installed PWA, % (like vh/dvh) resolves to the
+       status-bar-excluded height, which would clip the bottom of a full-height
+       shell. lvh = the full physical screen. */
+    height: 100lvh;
     overflow: hidden;
   }
   html,
