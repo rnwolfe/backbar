@@ -221,17 +221,15 @@ export function App() {
     <DensityProvider value={tweaks.density}>
       <div
         style={{
-          // 100lvh, not inset:0 / 100vh: in an installed PWA, vh/dvh/svh resolve
-          // to the status-bar-excluded height (e.g. 873 on a 932px screen), so a
-          // viewport-anchored shell stops short of the physical bottom and leaves
-          // a strip of page background below the nav. lvh = the full screen, so
-          // the in-flow BottomNav reaches the true edge. (Same fix as factory's
-          // PWA shell.) In a browser lvh == the viewport, so nothing changes.
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          height: "100lvh",
+          // A normal full-height flex column (NOT position:fixed). The root is
+          // sized to 100lvh (= the full physical screen even in an installed PWA,
+          // where vh/dvh/% under-report by the status-bar height), so this shell
+          // fills the screen and the in-flow BottomNav reaches the true bottom
+          // edge. position:relative anchors the absolute GridBg. (Matches
+          // factory's PWA shell; position:fixed + viewport units is the trap.)
+          position: "relative",
+          width: "100%",
+          height: "100%",
           background: T.bg,
           color: T.ink,
           fontFamily: T.body,
