@@ -256,7 +256,7 @@ export function App() {
             zIndex: 1,
             // Reserve room for the fixed BottomNav on mobile so content's
             // scroll bottom + sticky-action footers don't sit behind it.
-            paddingBottom: viewport.isMobile ? "calc(58px + var(--safe-bottom, 0px))" : 0,
+            paddingBottom: viewport.isMobile ? "calc(58px + var(--nav-safe-bottom, 0px))" : 0,
           }}
         >
           <Routes>
@@ -456,7 +456,7 @@ export function App() {
             style={{
               position: "fixed",
               right: 18,
-              bottom: viewport.isMobile ? "calc(70px + var(--safe-bottom, 0px))" : 18,
+              bottom: viewport.isMobile ? "calc(70px + var(--nav-safe-bottom, 0px))" : 18,
               zIndex: 44,
               width: 52,
               height: 52,
@@ -494,7 +494,7 @@ export function App() {
             position: "fixed",
             // Toasts sit above the BottomNav on mobile and above the floating
             // TweaksPanel trigger on desktop.
-            bottom: viewport.isMobile ? "calc(72px + var(--safe-bottom, 0px))" : 56,
+            bottom: viewport.isMobile ? "calc(72px + var(--nav-safe-bottom, 0px))" : 56,
             right: 14,
             left: viewport.isMobile ? 14 : "auto",
             zIndex: 40,

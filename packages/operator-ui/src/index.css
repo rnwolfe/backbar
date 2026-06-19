@@ -11,6 +11,11 @@
     /* Safe-area helpers — non-zero on notched / home-indicator devices. */
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
+    /* Bottom-nav clearance. iOS reports a generous ~34px home-indicator inset
+       in standalone (installed) PWA mode, which leaves a chunky empty band
+       under the tab bar. Cap it at 20px — enough to clear the gesture pill,
+       tight enough that the nav doesn't look "off". Scales to 0 in-browser. */
+    --nav-safe-bottom: min(var(--safe-bottom, 0px), 20px);
   }
   html,
   body,

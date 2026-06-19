@@ -414,11 +414,11 @@ export function BottomNav({ view, onNav, accentColor, hiddenTabs }: BottomNavPro
           left: 0,
           right: 0,
           bottom: 0,
-          paddingBottom: "var(--safe-bottom, 0px)",
+          paddingBottom: "var(--nav-safe-bottom, 0px)",
           background: T.surface,
           borderTop: `1px solid ${T.hairline}`,
           display: "flex",
-          height: "calc(58px + var(--safe-bottom, 0px))",
+          height: "calc(58px + var(--nav-safe-bottom, 0px))",
           zIndex: 30,
         }}
       >
