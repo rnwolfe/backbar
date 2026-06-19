@@ -221,8 +221,17 @@ export function App() {
     <DensityProvider value={tweaks.density}>
       <div
         style={{
+          // 100lvh, not inset:0 / 100vh: in an installed PWA, vh/dvh/svh resolve
+          // to the status-bar-excluded height (e.g. 873 on a 932px screen), so a
+          // viewport-anchored shell stops short of the physical bottom and leaves
+          // a strip of page background below the nav. lvh = the full screen, so
+          // the in-flow BottomNav reaches the true edge. (Same fix as factory's
+          // PWA shell.) In a browser lvh == the viewport, so nothing changes.
           position: "fixed",
-          inset: 0,
+          top: 0,
+          left: 0,
+          right: 0,
+          height: "100lvh",
           background: T.bg,
           color: T.ink,
           fontFamily: T.body,
@@ -254,9 +263,9 @@ export function App() {
             display: "flex",
             position: "relative",
             zIndex: 1,
-            // Reserve room for the fixed BottomNav on mobile so content's
-            // scroll bottom + sticky-action footers don't sit behind it.
-            paddingBottom: viewport.isMobile ? "calc(58px + var(--nav-safe-bottom, 0px))" : 0,
+            // No bottom reservation needed — the BottomNav is now an in-flow
+            // flex child below this, so it can't overlap the content.
+            paddingBottom: 0,
           }}
         >
           <Routes>
