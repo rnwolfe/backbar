@@ -408,6 +408,8 @@ export const api = {
       `/products/${encodeURIComponent(id)}/tags`,
       { method: "PUT", body: JSON.stringify({ tags }) },
     ),
+  // The configured public guest-menu URL (for display + QR), plus live count.
+  menuInfo: () => req<{ public_url: string | null; count: number }>("/menu/info"),
   // Pass the selected recipe ids to set the published set; omit to refresh the
   // live menu without changing what's published.
   publishMenu: (recipeIds?: string[]) =>

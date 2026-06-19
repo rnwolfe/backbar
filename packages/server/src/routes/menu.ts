@@ -44,6 +44,10 @@ export function menuRouter(deps: Deps) {
   // published ∩ makeable set, so a draining bottle drops a drink immediately.
   r.get("/menu", (c) => c.json(buildGuestMenu(deps)));
 
+  // The configured public guest URL (GUEST_PUBLIC_URL) so the operator console
+  // can show + QR the real address without hardcoding it.
+  r.get("/menu/info", (c) => c.json({ public_url: deps.guestMenu.publicUrl, count: buildGuestMenu(deps).length }));
+
   /**
    * POST /menu/publish — make the operator's selection the live guest menu.
    *
