@@ -8,6 +8,21 @@ version.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-06-20
+
+Major PWA improvements and AI-powered bartender chat capabilities.
+
+### Added
+
+- **AI bartender chat dock.** Start conversations with your AI bartender for recipe recommendations, inventory advice, and mixology guidance with persistent chat history.
+- **App icons and PWA support.** Install Backbar as a native app with proper icons and manifests for both operator and guest interfaces.
+- **Live guest menu publishing.** Your menu selection now properly updates the live guest-facing menu when you click "Publish to Guest."
+
+### Fixed
+
+- **PWA navigation issues.** Bottom navigation now displays correctly in installed PWA mode without disappearing or hiding behind the home indicator.
+- **Guest menu URL display.** Menu view now shows your actual configured guest menu URL instead of a placeholder address.
+
 ## [0.2.0] - 2026-06-16
 
 Backbar now delivers polished, user-friendly release notes that highlight what actually matters to you.
