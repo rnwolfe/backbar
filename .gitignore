@@ -1,5 +1,8 @@
 worktrees/
 .factory/runs/
+
+# agent planning scratch (tasks/todo.md, lessons.md — not product)
+tasks/
 node_modules/
 dist/
 build/
