@@ -187,6 +187,28 @@ export interface ProductLookupEnvelope {
   result: ProductLookupResult;
 }
 
+/**
+ * GET /products/:id/local — VA ABC local stock. Always resolves (no error path);
+ * `available:false` carries a machine reason so the UI stays silent on no-data.
+ */
+export type LocalStockResponse =
+  | { available: false; reason: "disabled" | "not-configured" | "no-data" }
+  | {
+      available: true;
+      in_stock: boolean;
+      price_cents: number | null;
+      resolved_code: string;
+      matched_name: string | null;
+      scope: string;
+      stores: {
+        store_number: number;
+        name: string;
+        city: string | null;
+        distance_mi: number | null;
+        qty: number;
+      }[];
+    };
+
 export interface Telemetry {
   now: number;
   readings_per_hour: number;
@@ -381,6 +403,13 @@ export const api = {
     req<Product & { tags: (ProductTagRow & { product_id: string })[] }>(
       `/products/${encodeURIComponent(id)}`,
     ),
+  localStock: (id: string) => req<LocalStockResponse>(`/products/${encodeURIComponent(id)}/local`),
+  settings: () => req<Record<string, string>>("/settings"),
+  setSetting: (key: string, value: string | number | null) =>
+    req<{ key: string; value: string | null }>(`/settings/${encodeURIComponent(key)}`, {
+      method: "PUT",
+      body: JSON.stringify({ value }),
+    }),
   createBottle: (bottle: unknown) =>
     req<Bottle>("/bottles", { method: "POST", body: JSON.stringify(bottle) }),
   ingestManualReading: (body: { bottle_id: string; level_ml: number }) =>

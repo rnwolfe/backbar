@@ -37,6 +37,13 @@ export const FLAG_REGISTRY: readonly FlagDef[] = [
       "Show the Shelf screen + Calibrate channel command. Turn off until load-cell hardware is wired up — manual volume entry and pour subtraction still work without it.",
     default: false,
   },
+  {
+    key: "va-abc",
+    label: "VA ABC local stock",
+    description:
+      "Show nearest Virginia ABC store + price for a product/bottle (catalog & bottle detail). Needs VA_ABC_HOME_STORE set to your nearest store number. Uses undocumented endpoints — degrades silently to no data.",
+    default: false,
+  },
 ];
 
 export interface PublicFlag {

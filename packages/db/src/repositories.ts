@@ -72,6 +72,59 @@ export const featureFlags = (db: DB) => ({
   },
 });
 
+// ─── app_setting (generic operator key/value) ──────────────────────────────
+interface AppSettingRow {
+  key: string;
+  value: string;
+  updated_at: number;
+}
+
+export interface AppSetting {
+  key: string;
+  value: string;
+  updated_at: number;
+}
+
+export const appSettings = (db: DB) => ({
+  /** All set values as a plain `{ key: value }` map. */
+  all(): Record<string, string> {
+    const rows = db.query<AppSettingRow, []>("SELECT * FROM app_setting").all();
+    const out: Record<string, string> = {};
+    for (const r of rows) out[r.key] = r.value;
+    return out;
+  },
+
+  get(key: string): string | null {
+    const row = db
+      .query<AppSettingRow, [string]>("SELECT * FROM app_setting WHERE key = ?")
+      .get(key);
+    return row ? row.value : null;
+  },
+
+  /** Convenience: parse a setting as an integer, or null when unset/non-numeric. */
+  getNumber(key: string): number | null {
+    const raw = this.get(key);
+    if (raw == null) return null;
+    const n = Number.parseInt(raw, 10);
+    return Number.isInteger(n) ? n : null;
+  },
+
+  /** Upsert a value. Returns the persisted row. */
+  set(key: string, value: string): AppSetting {
+    const ts = Date.now();
+    db.run(
+      `INSERT INTO app_setting (key, value, updated_at) VALUES (?, ?, ?)
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
+      [key, value, ts],
+    );
+    return { key, value, updated_at: ts };
+  },
+
+  delete(key: string): void {
+    db.run("DELETE FROM app_setting WHERE key = ?", [key]);
+  },
+});
+
 // ─── category (palette registry) ─────────────────────────────────────────
 interface CategoryRow {
   id: string;
@@ -156,6 +209,8 @@ interface ProductRow {
   origin_region: string | null;
   producer_url: string | null;
   age_statement_y: number | null;
+  // procurement integration (va-abc)
+  va_abc_code: string | null;
 }
 
 function productFromRow(r: ProductRow): Product {
@@ -174,6 +229,7 @@ function productFromRow(r: ProductRow): Product {
     origin_region: r.origin_region,
     producer_url: r.producer_url,
     age_statement_y: r.age_statement_y,
+    va_abc_code: r.va_abc_code,
   });
 }
 
@@ -196,8 +252,8 @@ export const products = (db: DB) => ({
     db.run(
       `INSERT INTO product
        (id, name, category, subcategory, abv, density_g_ml, default_ml, flavor_tags, notes,
-        distillery, origin_country, origin_region, producer_url, age_statement_y)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        distillery, origin_country, origin_region, producer_url, age_statement_y, va_abc_code)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         parsed.id,
         parsed.name,
@@ -213,9 +269,19 @@ export const products = (db: DB) => ({
         parsed.origin_region ?? null,
         parsed.producer_url ?? null,
         parsed.age_statement_y ?? null,
+        parsed.va_abc_code ?? null,
       ],
     );
     return parsed;
+  },
+
+  /**
+   * Persist the resolved Virginia ABC SKU for a product. Called by the
+   * procurement route after a Coveo name-search resolves a code, so future
+   * local-stock lookups are deterministic (and operator-correctable via PATCH).
+   */
+  setVaAbcCode(id: string, code: string | null): void {
+    db.run("UPDATE product SET va_abc_code = ? WHERE id = ?", [code, id]);
   },
 
   get(id: string): Product | null {

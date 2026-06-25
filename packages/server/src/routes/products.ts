@@ -1,9 +1,14 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { Product, ProductTag } from "@backbar/core";
-import { productTags as productTagsRepo, products as productsRepo } from "@backbar/db";
-import type { Deps } from "../deps";
+import {
+  appSettings as appSettingsRepo,
+  productTags as productTagsRepo,
+  products as productsRepo,
+} from "@backbar/db";
+import { VA_ABC_HOME_STORE_KEY, type Deps } from "../deps";
 import { err, parseBody } from "../errors";
+import { flagEnabled } from "./flags";
 
 /**
  * The POST /products body accepts an optional `tags` array (per
@@ -82,7 +87,8 @@ export function productsRouter(deps: Deps) {
       `UPDATE product SET
          name=?, category=?, subcategory=?, abv=?, density_g_ml=?, default_ml=?,
          flavor_tags=?, notes=?,
-         distillery=?, origin_country=?, origin_region=?, producer_url=?, age_statement_y=?
+         distillery=?, origin_country=?, origin_region=?, producer_url=?, age_statement_y=?,
+         va_abc_code=?
        WHERE id=?`,
       [
         merged.name,
@@ -98,10 +104,63 @@ export function productsRouter(deps: Deps) {
         merged.origin_region ?? null,
         merged.producer_url ?? null,
         merged.age_statement_y ?? null,
+        merged.va_abc_code ?? null,
         id,
       ],
     );
     return c.json(merged);
+  });
+
+  /**
+   * GET /products/:id/local — nearest VA ABC store(s) with this product in
+   * stock, plus price. Always 200 with an `available` flag so the UI can stay
+   * silent on no-data; never an error path (spec §10: "absence is silent").
+   *
+   * Gated by the `va-abc` feature flag AND a configured source (VA_ABC_HOME_STORE).
+   * When the lookup resolves a SKU from a name search, the resolved code is
+   * persisted so subsequent lookups are deterministic and operator-correctable.
+   */
+  r.get("/:id/local", async (c) => {
+    const id = c.req.param("id");
+    const product = productsRepo(deps.db).get(id);
+    if (!product) return err(c, 404, "not-found", `product '${id}'`);
+
+    if (!flagEnabled(deps, "va-abc")) {
+      return c.json({ available: false as const, reason: "disabled" as const });
+    }
+    // Home store is an operator setting; without it there's nothing to anchor to.
+    if (!deps.procurement || appSettingsRepo(deps.db).getNumber(VA_ABC_HOME_STORE_KEY) == null) {
+      return c.json({ available: false as const, reason: "not-configured" as const });
+    }
+
+    const result = await deps.procurement.lookup({
+      name: product.name,
+      va_abc_code: product.va_abc_code,
+    });
+    if (!result) {
+      return c.json({ available: false as const, reason: "no-data" as const });
+    }
+
+    // Persist a freshly-resolved code so future lookups skip the name search.
+    if (result.resolvedCode && result.resolvedCode !== product.va_abc_code) {
+      productsRepo(deps.db).setVaAbcCode(id, result.resolvedCode);
+    }
+
+    return c.json({
+      available: true as const,
+      in_stock: result.inStock,
+      price_cents: result.priceCents,
+      resolved_code: result.resolvedCode,
+      matched_name: result.matchedName,
+      scope: result.scope,
+      stores: result.stores.map((s) => ({
+        store_number: s.storeNumber,
+        name: s.name,
+        city: s.city,
+        distance_mi: s.distanceMi,
+        qty: s.qty,
+      })),
+    });
   });
 
   /**

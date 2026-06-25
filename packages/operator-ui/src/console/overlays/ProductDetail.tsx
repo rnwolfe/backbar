@@ -12,6 +12,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { Product, Recipe } from "@backbar/core";
 import { api, type ProductTagRow } from "../../api/client";
 import { Cell, Pill, Stat } from "../Cells";
+import { LocalStockCell } from "./LocalStockCell";
 import { Dot } from "../Chrome";
 import { catOf, decorateBottle, joinRecipes, type DecoratedBottle, type JoinedRecipe } from "../../data/derive";
 import { T } from "../tokens";
@@ -417,6 +418,8 @@ export function ProductDetailOverlay({
             )}
           </div>
         </Cell>
+
+        <LocalStockCell productId={productId} accent={accent} style={{ marginTop: 10 }} />
 
         {detail?.producer_url ? (
           <div style={{ marginTop: 12 }}>

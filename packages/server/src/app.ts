@@ -15,6 +15,7 @@ import { productsRouter } from "./routes/products";
 import { publicRouter } from "./routes/public";
 import { readingsRouter } from "./routes/readings";
 import { recipesRouter } from "./routes/recipes";
+import { settingsRouter } from "./routes/settings";
 import { shoppingRouter } from "./routes/shopping";
 import { telemetryRouter } from "./routes/telemetry";
 
@@ -33,6 +34,7 @@ export function buildApp(deps: Deps) {
 
   app.route("/categories", categoriesRouter(deps));
   app.route("/flags", flagsRouter(deps));
+  app.route("/settings", settingsRouter(deps));
   app.route("/products", productsRouter(deps));
   app.route("/bottles", bottlesRouter(deps));
 

@@ -13,6 +13,7 @@ export { uuidv7 } from "./ids";
 export {
   categories,
   featureFlags,
+  appSettings,
   products,
   productTags,
   bottles,
@@ -31,6 +32,7 @@ export {
   type ChatThreadRow,
   type ChatMessageRow,
   type FeatureFlagOverride,
+  type AppSetting,
   type PourApplyInput,
   type PourApplyResult,
 } from "./repositories";

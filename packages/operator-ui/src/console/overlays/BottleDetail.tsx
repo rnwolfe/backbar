@@ -5,6 +5,7 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { Cell, Pill, Stat } from "../Cells";
+import { LocalStockCell } from "./LocalStockCell";
 import { Dot } from "../Chrome";
 import { T } from "../tokens";
 import { Tooltip, TooltipRows } from "../Tooltip";
@@ -539,6 +540,8 @@ export function BottleDetailOverlay({
             </div>
           </Cell>
         </div>
+
+        <LocalStockCell productId={bottle.raw.product_id} accent={accent} style={{ marginTop: 10 }} />
 
         {error ? (
           <div

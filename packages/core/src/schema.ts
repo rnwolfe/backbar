@@ -68,6 +68,9 @@ export const Product = z.object({
   origin_region: z.string().nullish(),
   producer_url: z.string().url().nullish(),
   age_statement_y: z.number().positive().nullish(),
+  // Virginia ABC catalog SKU (6-digit, zero-padded). Pins the product to the
+  // procurement integration's local-stock lookup; null until first resolved.
+  va_abc_code: z.string().nullish(),
 });
 export type Product = z.infer<typeof Product>;
 

@@ -15,6 +15,7 @@ import { T, accent } from "../console/tokens";
 import { store, useStore } from "../store/useStore";
 import { SettingsCategories } from "./SettingsCategories";
 import { SettingsFlags } from "./SettingsFlags";
+import { SettingsProcurement } from "./SettingsProcurement";
 import { useViewport } from "../util/useViewport";
 
 type Pending = "reset-bar" | "reset-recipes" | "reseed" | null;
@@ -215,6 +216,10 @@ export function Settings() {
 
       <div style={{ padding: "0 16px 24px" }}>
         <SettingsFlags />
+      </div>
+
+      <div style={{ padding: "0 16px 24px" }}>
+        <SettingsProcurement />
       </div>
 
       <div style={{ padding: "0 16px 24px" }}>
