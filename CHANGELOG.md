@@ -8,6 +8,14 @@ version.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-06-25
+
+This release adds Virginia ABC store integration for real-time local inventory and pricing.
+
+### Added
+
+- **Virginia ABC store integration.** See which nearby stores have bottles in stock and at what price directly from product and bottle pages.
+
 ## [0.3.0] - 2026-06-20
 
 Major PWA improvements and AI-powered bartender chat capabilities.
