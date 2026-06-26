@@ -456,6 +456,18 @@ export const bottles = (db: DB) => ({
       db.run("UPDATE bottle SET level_ml = ? WHERE id = ?", [level_ml, id]);
     }
   },
+
+  /**
+   * Permanently remove a single bottle. Like {@link deleteAll}, dependents are
+   * handled by the schema's FK actions: `reading` rows cascade-delete, while
+   * `sensor_channel.bottle_id` and `pour_binding.bottle_id` are set NULL — so
+   * the channel keeps its device mapping and historical pours keep their ml
+   * (just lose the bottle link). Returns false when no such bottle existed.
+   */
+  remove(id: string): boolean {
+    const { changes } = db.run("DELETE FROM bottle WHERE id = ?", [id]);
+    return changes > 0;
+  },
 });
 
 // ─── reading (append-only) ───────────────────────────────────────────────

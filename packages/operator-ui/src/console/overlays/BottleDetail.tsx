@@ -12,7 +12,7 @@ import { Tooltip, TooltipRows } from "../Tooltip";
 import { api, type BottleDetail, type ProductTagRow } from "../../api/client";
 import type { DecoratedBottle, JoinedRecipe } from "../../data/derive";
 import { catOf, joinRecipes } from "../../data/derive";
-import { useStore } from "../../store/useStore";
+import { store, useStore } from "../../store/useStore";
 import { copyToClipboard, shareUrl } from "../../util/share";
 import { useViewport } from "../../util/useViewport";
 
@@ -45,6 +45,25 @@ export function BottleDetailOverlay({
   const [detail, setDetail] = useState<BottleDetail | null>(null);
   const [productTags, setProductTags] = useState<ProductTagRow[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDelete() {
+    if (deleting) return;
+    const label = bottle.name ?? "this bottle";
+    if (!window.confirm(`Delete ${label} from inventory? Its readings are removed too. This cannot be undone.`)) {
+      return;
+    }
+    setDeleting(true);
+    try {
+      const res = await api.deleteBottle(bottle.id);
+      await store.hydrate();
+      onToast?.(res.freed_channel ? `bottle deleted · freed ${res.freed_channel.slot}` : "bottle deleted");
+      onClose();
+    } catch (e) {
+      setDeleting(false);
+      onToast?.(e instanceof Error ? `delete failed — ${e.message}` : "delete failed");
+    }
+  }
 
   useEffect(() => {
     let alive = true;
@@ -162,6 +181,13 @@ export function BottleDetailOverlay({
               onClick={() => onDuplicate(bottle)}
             />
           ) : null}
+          <HeaderAction
+            label={deleting ? "DELETING…" : "DELETE"}
+            title="permanently remove this bottle from inventory"
+            destructive
+            disabled={deleting}
+            onClick={() => void handleDelete()}
+          />
           <button
             type="button"
             onClick={onClose}
@@ -567,33 +593,43 @@ function HeaderAction({
   label,
   title,
   onClick,
+  destructive = false,
+  disabled = false,
 }: {
   label: string;
   title: string;
   onClick(): void;
+  /** Tints the label + uses a red hover (for delete/remove). */
+  destructive?: boolean;
+  disabled?: boolean;
 }) {
+  const hoverColor = destructive ? T.red : T.cyan;
+  const baseColor = destructive ? T.red : T.inkMuted;
   return (
     <button
       type="button"
       title={title}
       onClick={onClick}
+      disabled={disabled}
       style={{
         padding: "0 10px",
         height: 30,
         background: "transparent",
         border: `1px solid ${T.hairline2}`,
-        color: T.inkMuted,
+        color: baseColor,
         fontFamily: T.mono,
         fontSize: 10,
         letterSpacing: "0.14em",
-        cursor: "pointer",
+        cursor: disabled ? "default" : "pointer",
+        opacity: disabled ? 0.6 : 1,
       }}
       onMouseEnter={(e) => {
-        (e.currentTarget as HTMLButtonElement).style.color = T.ink;
-        (e.currentTarget as HTMLButtonElement).style.borderColor = T.cyan;
+        if (disabled) return;
+        (e.currentTarget as HTMLButtonElement).style.color = destructive ? T.red : T.ink;
+        (e.currentTarget as HTMLButtonElement).style.borderColor = hoverColor;
       }}
       onMouseLeave={(e) => {
-        (e.currentTarget as HTMLButtonElement).style.color = T.inkMuted;
+        (e.currentTarget as HTMLButtonElement).style.color = baseColor;
         (e.currentTarget as HTMLButtonElement).style.borderColor = T.hairline2;
       }}
     >

@@ -180,5 +180,34 @@ export function bottlesRouter(deps: Deps) {
     return c.json(merged);
   });
 
+  /**
+   * DELETE /bottles/:id — permanently remove a bottle from inventory.
+   *
+   * Append-only `reading` rows cascade-delete with it; the bottle's
+   * `sensor_channel` binding (if any) is set NULL so the channel keeps its
+   * device mapping and frees its slot; historical `pour` rows keep their ml and
+   * just lose the bottle link. Deletion can flip makeability, so recompute +
+   * broadcast like create/patch do.
+   */
+  r.delete("/:id", (c) => {
+    const id = c.req.param("id");
+    const existing = bottlesRepo(deps.db).get(id);
+    if (!existing) return err(c, 404, "not-found", `bottle '${id}'`);
+
+    // Note the freed channel (if mapped) for the response, before the unbind.
+    const channel = channelsRepo(deps.db).list().find((ch) => ch.bottle_id === id) ?? null;
+
+    bottlesRepo(deps.db).remove(id);
+
+    const { changed } = deps.makeable.recompute();
+    for (const ch of changed) deps.bus.emit({ type: "makeable.changed", ...ch });
+
+    return c.json({
+      ok: true,
+      id,
+      freed_channel: channel ? { device_id: channel.device_id, channel: channel.channel, slot: channel.slot } : null,
+    });
+  });
+
   return r;
 }

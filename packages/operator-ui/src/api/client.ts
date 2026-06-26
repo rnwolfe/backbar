@@ -470,4 +470,10 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify(body),
     }),
+  deleteBottle: (id: string) =>
+    req<{
+      ok: boolean;
+      id: string;
+      freed_channel: { device_id: string; channel: number; slot: string } | null;
+    }>(`/bottles/${encodeURIComponent(id)}`, { method: "DELETE" }),
 };
