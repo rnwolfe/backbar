@@ -284,6 +284,9 @@ export interface BulkImportCandidate {
   image_id?: string;
   reconciliation: "existing-product" | "new-product";
   matched_product_id?: string;
+  /** How many OPEN bottles of the matched product already exist. >0 → this
+   *  candidate would duplicate something you have on hand (pre-skipped in the UI). */
+  existing_open_bottles?: number;
 }
 
 export interface BulkImportPerImage {

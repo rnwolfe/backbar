@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import type { UIMessage } from "ai";
 import { coverage, type Product } from "@backbar/core";
 import {
+  bottles as bottlesRepo,
   products as productsRepo,
   recipes as recipesRepo,
 } from "@backbar/db";
@@ -236,6 +237,13 @@ export function inventoryImportRouter(
     }
 
     const products = productsRepo(deps.db).list();
+    // Count open bottles per product so the review UI can flag candidates that
+    // would duplicate a product you already have on hand (the main source of
+    // import "flooding" — re-scanning a shelf adds another bottle each time).
+    const openByProduct = new Map<string, number>();
+    for (const b of bottlesRepo(deps.db).list()) {
+      if (b.status === "open") openByProduct.set(b.product_id, (openByProduct.get(b.product_id) ?? 0) + 1);
+    }
 
     const settled = await Promise.allSettled(
       parsed.data.images.map(async (img, idx) => {
@@ -292,6 +300,7 @@ export function inventoryImportRouter(
             ...imageId,
             reconciliation: matchedId ? "existing-product" : "new-product",
             ...(matchedId ? { matched_product_id: matchedId } : {}),
+            existing_open_bottles: matchedId ? (openByProduct.get(matchedId) ?? 0) : 0,
           });
         }
       }

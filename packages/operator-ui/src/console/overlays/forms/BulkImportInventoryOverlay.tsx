@@ -64,7 +64,9 @@ function toEditable(c: BulkImportCandidate, idx: number): EditableCandidate {
   return {
     _key: `${c.image_index}-${idx}`,
     raw: c,
-    discarded: false,
+    // Pre-skip candidates that would duplicate a product you already have an
+    // open bottle of — the operator opts back in if it's a genuinely new bottle.
+    discarded: (c.existing_open_bottles ?? 0) > 0,
     name: c.display_name,
     expression: c.expression ?? "",
     fill: (c.fill_observed as FillLevel) ?? "",
@@ -563,6 +565,7 @@ function CandidateRow({
   const badgeBg = isExisting ? T.cyanGlow : T.amberGlow;
   const badgeBorder = isExisting ? T.cyanDim : T.amberDim;
   const badgeText = isExisting ? "EXISTING" : "NEW";
+  const dupeCount = c.raw.existing_open_bottles ?? 0;
 
   const patch = (p: Partial<Omit<EditableCandidate, "_key" | "raw">>) => patchCandidate(c._key, p);
 
@@ -603,6 +606,24 @@ function CandidateRow({
         >
           {badgeText}
         </span>
+
+        {dupeCount > 0 ? (
+          <span
+            title={`You already have ${dupeCount} open bottle${dupeCount === 1 ? "" : "s"} of this product — skipped by default to avoid duplicates. Re-enable below if it's a genuinely new bottle.`}
+            style={{
+              fontSize: 9,
+              fontFamily: T.mono,
+              letterSpacing: "0.14em",
+              color: T.amber,
+              background: T.amberGlow,
+              border: `1px solid ${T.amberDim}`,
+              padding: "2px 6px",
+              flexShrink: 0,
+            }}
+          >
+            ⚠ HAVE {dupeCount} OPEN
+          </span>
+        ) : null}
 
         {/* Confidence chip */}
         <span
