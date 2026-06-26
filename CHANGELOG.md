@@ -8,6 +8,14 @@ version.
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-06-26
+
+Introducing reusable recipe components for complex homemade ingredients like syrups and infusions.
+
+### Added
+
+- **Recipe components.** Create reusable sub-recipes for homemade syrups, orgeat, and infusions that can be referenced across multiple cocktail recipes.
+
 ## [0.6.0] - 2026-06-26
 
 Smart import improvements prevent duplicate bottles and streamline inventory management.
