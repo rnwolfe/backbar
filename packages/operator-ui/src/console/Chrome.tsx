@@ -138,6 +138,8 @@ interface TopBarProps {
   accentColor: string;
   /** Tab ids to drop from the bar (e.g. shelf when the feature flag is off). */
   hiddenTabs?: readonly ViewKey[];
+  /** When provided (the `service-mode` flag is on), shows a BAR MODE button. */
+  onEnterService?: () => void;
   /** Compact mode — when true, the bar collapses to brand + status + search. */
   isMobile?: boolean;
 }
@@ -158,6 +160,7 @@ function DesktopTopBar({
   onOpenPalette,
   accentColor,
   hiddenTabs,
+  onEnterService,
 }: TopBarProps) {
   const visibleTabs = hiddenTabs?.length ? TABS.filter((t) => !hiddenTabs.includes(t.id)) : TABS;
   const [now, setNow] = useState<Date>(() => new Date());
@@ -246,6 +249,29 @@ function DesktopTopBar({
 
       <div style={{ flex: 1 }} />
 
+      {onEnterService ? (
+        <button
+          type="button"
+          onClick={onEnterService}
+          aria-label="enter bar mode"
+          style={{
+            height: "100%",
+            padding: "0 14px",
+            background: "transparent",
+            border: "none",
+            borderLeft: `1px solid ${T.hairline}`,
+            color: accentColor,
+            fontSize: 11,
+            fontFamily: T.mono,
+            letterSpacing: "0.12em",
+            fontWeight: 600,
+            cursor: "pointer",
+          }}
+        >
+          ◧ BAR MODE
+        </button>
+      ) : null}
+
       <button
         type="button"
         onClick={onOpenPalette}
@@ -328,7 +354,7 @@ function DesktopTopBar({
   );
 }
 
-function MobileTopBar({ conn, onOpenPalette, accentColor }: TopBarProps) {
+function MobileTopBar({ conn, onOpenPalette, accentColor, onEnterService }: TopBarProps) {
   const liveLabel = conn === "open" ? "LIVE" : conn === "connecting" ? "SYNC" : "OFFLINE";
   const liveColor = conn === "open" ? T.green : conn === "connecting" ? T.amber : T.red;
   return (
@@ -362,6 +388,27 @@ function MobileTopBar({ conn, onOpenPalette, accentColor }: TopBarProps) {
       >
         {liveLabel}
       </span>
+      {onEnterService ? (
+        <button
+          type="button"
+          onClick={onEnterService}
+          aria-label="enter bar mode"
+          style={{
+            height: 36,
+            padding: "0 12px",
+            background: "transparent",
+            border: `1px solid ${accentColor}`,
+            color: accentColor,
+            fontFamily: T.mono,
+            fontSize: 11,
+            letterSpacing: "0.1em",
+            fontWeight: 600,
+            cursor: "pointer",
+          }}
+        >
+          ◧ BAR
+        </button>
+      ) : null}
       <button
         type="button"
         onClick={onOpenPalette}

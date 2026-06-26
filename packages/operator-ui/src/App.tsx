@@ -42,6 +42,7 @@ import { TokenGate } from "./TokenGate";
 import { ChatDock } from "./chat/ChatDock";
 import type { ChatContext } from "./chat/types";
 import { Settings } from "./views/Settings";
+import { ServiceMode } from "./views/ServiceMode";
 import { Shelf } from "./views/Shelf";
 
 interface Toast {
@@ -74,6 +75,20 @@ export function App() {
 
   const conn = useStore((s) => s.conn);
   const shelfEnabled = useFlag("shelf");
+  const serviceModeEnabled = useFlag("service-mode");
+  // Bar Mode persists per-device so a propped-up tablet stays in service mode
+  // across reloads. Cleared automatically if the flag is later turned off.
+  const [serviceMode, setServiceMode] = useState<boolean>(
+    () => localStorage.getItem("backbar.serviceMode") === "1",
+  );
+  const enterService = useCallback(() => {
+    localStorage.setItem("backbar.serviceMode", "1");
+    setServiceMode(true);
+  }, []);
+  const exitService = useCallback(() => {
+    localStorage.removeItem("backbar.serviceMode");
+    setServiceMode(false);
+  }, []);
   const viewport = useViewport();
   const nodes = useStore((s) => s.nodes);
   const bottlesRaw = useStore((s) => s.bottles);
@@ -250,6 +265,7 @@ export function App() {
           onOpenPalette={() => setPaletteOpen(true)}
           accentColor={accentColor}
           hiddenTabs={shelfEnabled ? undefined : ["shelf"]}
+          onEnterService={serviceModeEnabled ? enterService : undefined}
           isMobile={viewport.isMobile}
         />
 
@@ -443,6 +459,10 @@ export function App() {
             for a floating accessory. Operators get the same controls in
             Settings → Appearance. */}
         {viewport.isMobile ? null : <TweaksPanel />}
+
+        {serviceModeEnabled && serviceMode ? (
+          <ServiceMode onClose={exitService} onToast={pushToast} accent={accentColor} />
+        ) : null}
 
         <WhatsNewModal />
         <TokenGate />

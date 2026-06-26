@@ -44,6 +44,13 @@ export const FLAG_REGISTRY: readonly FlagDef[] = [
       "Show nearest Virginia ABC store + price for a product/bottle (catalog & bottle detail). Needs VA_ABC_HOME_STORE set to your nearest store number. Uses undocumented endpoints — degrades silently to no data.",
     default: false,
   },
+  {
+    key: "service-mode",
+    label: "Bar Mode (service)",
+    description:
+      "Adds a BAR MODE button to the top bar: a full-screen, big-touch service surface for making drinks during a party — makeable recipes + quick pour, nothing else. Toggle off to hide the button; the dense console is unchanged.",
+    default: false,
+  },
 ];
 
 export interface PublicFlag {
