@@ -8,6 +8,15 @@ version.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-06-26
+
+Bar Mode brings a streamlined party-service interface with quick pouring controls.
+
+### Added
+
+- **Bar Mode service interface.** A full-screen, touch-friendly interface designed for making drinks during parties with simplified recipe selection and quick pour buttons.
+- **Delete bottles from inventory.** Remove bottles you no longer have with a new delete option that safely preserves your historical pour data.
+
 ## [0.4.0] - 2026-06-25
 
 This release adds Virginia ABC store integration for real-time local inventory and pricing.
