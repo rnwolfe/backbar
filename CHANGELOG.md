@@ -8,6 +8,14 @@ version.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-06-26
+
+Smart import improvements prevent duplicate bottles and streamline inventory management.
+
+### Changed
+
+- **Smarter bottle imports.** Photo import now detects when you already have open bottles of a product and skips creating duplicates.
+
 ## [0.5.0] - 2026-06-26
 
 Bar Mode brings a streamlined party-service interface with quick pouring controls.
