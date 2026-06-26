@@ -53,6 +53,17 @@ const builtins: Command[] = [
     },
   },
   {
+    id: "nav.components",
+    title: "Go to prep (components)",
+    group: "nav",
+    keywords: ["components", "prep", "orgeat", "syrup", "infusion", "made"],
+    icon: "⚗",
+    run: (ctx) => {
+      ctx.nav("components");
+      ctx.palette.close();
+    },
+  },
+  {
     id: "nav.pours",
     title: "Go to pour history",
     group: "nav",

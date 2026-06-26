@@ -6,10 +6,11 @@
  * (POST /recipes) or discard.
  */
 import { useState } from "react";
-import { api, type ImportedRecipeDraft, type RecipePhotoImportResponse } from "../../../api/client";
+import type { Recipe } from "@backbar/core";
+import { api, type RecipePhotoImportResponse } from "../../../api/client";
 import { store } from "../../../store/useStore";
 import { T } from "../../tokens";
-import { FormShell, toSlug } from "./FormShell";
+import { FormShell } from "./FormShell";
 
 interface Props {
   onClose(): void;
@@ -40,35 +41,16 @@ export function ImportPhotoOverlay({ onClose, onToast }: Props) {
     }
   };
 
-  const saveDraft = async (draft: ImportedRecipeDraft) => {
+  const saveDraft = async (result: RecipePhotoImportResponse) => {
+    const { draft } = result;
     setState({ kind: "saving" });
     setError(null);
     try {
-      const slug = toSlug(draft.name);
-      // Photo-import emits raw labels (no catalog binding) — write them as
-      // `freeform` refs. The operator binds to real products afterward.
-      await api.createRecipe({
-        id: slug,
-        name: draft.name,
-        family: draft.family,
-        method: draft.method,
-        glass: draft.glass,
-        ice: draft.ice,
-        garnish: draft.garnish,
-        instructions: draft.instructions,
-        source: "photo-import",
-        is_published: false,
-        tags: [],
-        ingredients: (draft.ingredients ?? []).map((ing, i) => ({
-          ref_type: "freeform",
-          ref_id: ing.label,
-          label: ing.label,
-          amount: ing.amount,
-          unit: ing.unit ?? "ml",
-          optional: false,
-          garnish: false,
-          sort: i,
-        })),
+      // Confirm preserves the server-resolved ingredient refs (products +
+      // component links) and persists any new homemade components.
+      await api.confirmRecipePhoto(draft.id, {
+        ...draft,
+        components: result.components.map((c) => c.draft),
       });
       await store.hydrate();
       onToast?.(`imported · ${draft.name}`);
@@ -76,17 +58,12 @@ export function ImportPhotoOverlay({ onClose, onToast }: Props) {
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : "save failed");
-      // fall back to the draft view so operator can fix + retry
-      setState((prev) =>
-        prev.kind === "saving"
-          ? { kind: "draft", result: { draft, unresolved: [], image_hash: "" } }
-          : prev,
-      );
+      setState((prev) => (prev.kind === "saving" ? { kind: "draft", result } : prev));
     }
   };
 
   const submit = () => {
-    if (state.kind === "draft") void saveDraft(state.result.draft);
+    if (state.kind === "draft") void saveDraft(state.result);
   };
 
   return (
@@ -146,7 +123,7 @@ export function ImportPhotoOverlay({ onClose, onToast }: Props) {
 }
 
 function DraftPreview({ result }: { result: RecipePhotoImportResponse }) {
-  const { draft, unresolved } = result;
+  const { draft, unresolved, components } = result;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <div style={{ padding: "10px 12px", background: T.surface2, border: `1px solid ${T.hairline2}` }}>
@@ -173,13 +150,56 @@ function DraftPreview({ result }: { result: RecipePhotoImportResponse }) {
             <span style={{ color: T.cyan, fontFamily: T.mono, fontSize: 9, width: 20 }}>
               {String(i + 1).padStart(2, "0")}
             </span>
-            <span style={{ flex: 1, color: T.ink }}>{ing.label}</span>
-            <span style={{ fontFamily: T.mono, fontSize: 10, color: T.inkMuted }}>
+            <span style={{ flex: 1, color: T.ink }}>
+              {ing.label ?? ing.ref_id}
+              {ing.note ? <span style={{ color: T.inkDim }}> · {ing.note}</span> : null}
+            </span>
+            <RefTag refType={ing.ref_type} />
+            <span style={{ fontFamily: T.mono, fontSize: 10, color: T.inkMuted, width: 56, textAlign: "right" }}>
               {ing.amount != null ? `${ing.amount} ${ing.unit ?? ""}` : "—"}
             </span>
           </div>
         ))}
       </div>
+
+      {components.length > 0 ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ fontSize: 10, fontFamily: T.mono, color: T.cyan, letterSpacing: "0.18em" }}>
+            HOMEMADE COMPONENTS
+          </div>
+          {components.map((c) => (
+            <div key={c.draft.id} style={{ padding: "8px 10px", background: T.surface2, border: `1px solid ${T.hairline2}` }}>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                <span style={{ fontSize: 13, fontWeight: 500, color: T.ink, flex: 1 }}>
+                  {c.draft.name}
+                  {c.draft.kind ? <span style={{ color: T.inkDim, fontSize: 11 }}> · {c.draft.kind}</span> : null}
+                </span>
+                <span
+                  title={c.exists ? "links to an existing component" : "will be created"}
+                  style={{
+                    fontSize: 9,
+                    fontFamily: T.mono,
+                    letterSpacing: "0.12em",
+                    color: c.exists ? T.cyan : T.green,
+                    border: `1px solid ${T.hairline2}`,
+                    padding: "1px 6px",
+                  }}
+                >
+                  {c.exists ? "LINK EXISTING" : "NEW"}
+                </span>
+              </div>
+              <div style={{ fontFamily: T.mono, fontSize: 10, color: T.inkMuted, marginTop: 4 }}>
+                {c.draft.ingredients
+                  .map((ci) => `${ci.label ?? ci.ref_id}${ci.amount != null ? ` ${ci.amount}${ci.unit ?? ""}` : ""}`)
+                  .join(" · ")}
+              </div>
+              {c.draft.keeps ? (
+                <div style={{ fontSize: 10, color: T.inkDim, marginTop: 3 }}>keeps: {c.draft.keeps}</div>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      ) : null}
 
       {unresolved.length > 0 ? (
         <div
@@ -200,6 +220,22 @@ function DraftPreview({ result }: { result: RecipePhotoImportResponse }) {
         </div>
       ) : null}
     </div>
+  );
+}
+
+function RefTag({ refType }: { refType: Recipe["ingredients"][number]["ref_type"] }) {
+  const map: Record<string, { label: string; color: string }> = {
+    product: { label: "product", color: T.cyan },
+    category: { label: "category", color: T.inkMuted },
+    tag: { label: "tag", color: T.inkMuted },
+    component: { label: "component", color: T.green },
+    freeform: { label: "freeform", color: T.amber },
+  };
+  const m = map[refType] ?? { label: refType, color: T.inkMuted };
+  return (
+    <span style={{ fontSize: 8, fontFamily: T.mono, letterSpacing: "0.1em", color: m.color, opacity: 0.9 }}>
+      {m.label.toUpperCase()}
+    </span>
   );
 }
 

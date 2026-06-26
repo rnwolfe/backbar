@@ -89,6 +89,9 @@ function candidates(ing: RecipeIngredient, inv: InvBottle[]): InvBottle[] {
       return inv.filter((b) => tagRefMatches(ing.ref_id ?? "", b));
     case "freeform":
       return [];
+    case "component":
+      // Made separately from pantry items — never bound to a bottle.
+      return [];
   }
 }
 
@@ -104,17 +107,35 @@ function ingredientLabel(ing: RecipeIngredient): string {
  * - Binding picks the most-depleted valid bottle (use-it-up) by default;
  *   `freshest` flips the comparator.
  */
+/** Just the component fields makeability cares about (avoids importing the row shape). */
+export interface ComponentMakeability {
+  id: string;
+  blocks_makeability: boolean;
+  on_hand: boolean;
+}
+
 export function evaluate(
   recipe: Recipe,
   inv: InvBottle[],
-  opts: { policy?: BindingPolicy } = {},
+  opts: { policy?: BindingPolicy; components?: ComponentMakeability[] } = {},
 ): Result {
   const policy: BindingPolicy = opts.policy ?? "use-it-up";
+  const componentById = new Map((opts.components ?? []).map((c) => [c.id, c] as const));
   const missing: string[] = [];
   const bindings: Binding[] = [];
 
   for (const ing of recipe.ingredients) {
     if (ing.optional || ing.garnish) continue;
+
+    // A made component (orgeat, syrup) is prepped separately, not a tracked
+    // bottle, so it never binds a pour. It blocks makeability ONLY when the
+    // component opts in (`blocks_makeability`) and isn't currently `on_hand` —
+    // letting trivial preps pass while gating ones that need a special batch.
+    if (ing.ref_type === "component") {
+      const comp = componentById.get(ing.ref_id ?? "");
+      if (comp?.blocks_makeability && !comp.on_hand) missing.push(ingredientLabel(ing));
+      continue;
+    }
 
     if (ing.ref_type === "freeform") {
       const id = ing.ref_id ?? "";

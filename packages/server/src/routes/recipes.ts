@@ -1,11 +1,17 @@
 import { Hono } from "hono";
-import { Recipe } from "@backbar/core";
-import { recipes as recipesRepo } from "@backbar/db";
+import { z } from "zod";
+import { Component, Recipe } from "@backbar/core";
+import { components as componentsRepo, recipes as recipesRepo } from "@backbar/db";
 import type { Deps } from "../deps";
 import { err, parseBody } from "../errors";
 
 const RecipePatch = Recipe.partial();
-const RecipeConfirm = Recipe.partial({ id: true });
+// Confirm accepts the (possibly operator-edited) draft plus any homemade
+// components it references — new ones are created on confirm; ones that already
+// exist (by id) are left as-is so the build line just links to them.
+const RecipeConfirm = Recipe.partial({ id: true }).extend({
+  components: z.array(Component).optional(),
+});
 
 export function recipesRouter(deps: Deps) {
   const r = new Hono();
@@ -109,8 +115,9 @@ export function recipesRouter(deps: Deps) {
       return err(c, 409, "duplicate", `recipe '${id}' already exists`);
     }
 
+    const { components: draftComponents, ...recipeFields } = parsed.data;
     const draft = Recipe.parse({
-      ...parsed.data,
+      ...recipeFields,
       id,
       source: "photo-import",
       provenance: parsed.data.provenance ?? null,
@@ -119,6 +126,11 @@ export function recipesRouter(deps: Deps) {
       return err(c, 400, "validation", "missing or invalid photo provenance");
     }
 
+    // Create any referenced homemade components that don't already exist, then
+    // the recipe — its `ref_type:"component"` build lines link to them by id.
+    for (const comp of draftComponents ?? []) {
+      if (!componentsRepo(deps.db).get(comp.id)) componentsRepo(deps.db).insert(comp);
+    }
     const created = recipesRepo(deps.db).insert(draft);
     const { changed } = deps.makeable.recompute();
     for (const ch of changed) deps.bus.emit({ type: "makeable.changed", ...ch });

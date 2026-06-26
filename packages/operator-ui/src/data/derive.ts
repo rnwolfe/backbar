@@ -155,7 +155,7 @@ export interface JoinedRecipe {
     optional: boolean;
     garnish: boolean;
     /** Original ref_type so the UI can tell product vs tag vs category vs freeform. */
-    ref_type: "product" | "category" | "tag" | "freeform";
+    ref_type: "product" | "category" | "tag" | "freeform" | "component";
   }[];
   status: "makeable" | "one-away" | "unmakeable";
   one_away?: string;

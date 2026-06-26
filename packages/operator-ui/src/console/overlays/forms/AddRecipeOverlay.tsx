@@ -19,14 +19,30 @@ import { FormInput, FormRow, FormShell, FormTextarea, toSlug } from "./FormShell
 export type RecipeOverlayMode = "create" | "edit" | "duplicate";
 
 interface IngredientRow {
-  ref_type: "product" | "category" | "tag" | "freeform";
+  ref_type: "product" | "category" | "tag" | "freeform" | "component";
   ref_id: string;
   label: string;
   amount: string;
-  unit: "ml" | "dash" | "barspoon" | "each" | "leaf" | "top";
+  // mirrors the core Unit enum
+  unit: "ml" | "oz" | "dash" | "barspoon" | "tsp" | "tbsp" | "cup" | "drop" | "pinch" | "each" | "leaf" | "top";
   optional: boolean;
   garnish: boolean;
 }
+
+const UNIT_OPTIONS = [
+  "ml",
+  "oz",
+  "dash",
+  "barspoon",
+  "tsp",
+  "tbsp",
+  "cup",
+  "drop",
+  "pinch",
+  "each",
+  "leaf",
+  "top",
+] as const;
 
 const EMPTY_ING: IngredientRow = {
   ref_type: "product",
@@ -104,6 +120,7 @@ function recipeToSeed(mode: RecipeOverlayMode, initial?: Recipe): SeedState {
 
 export function AddRecipeOverlay({ onClose, onToast, mode = "create", initial }: Props) {
   const products = useStore((s) => s.products);
+  const components = useStore((s) => s.components);
   const seed = useMemo(() => recipeToSeed(mode, initial), [mode, initial]);
 
   const [name, setName] = useState(seed.name);
@@ -311,7 +328,7 @@ export function AddRecipeOverlay({ onClose, onToast, mode = "create", initial }:
         >
           <ConSelect
             value={row.ref_type}
-            options={["product", "category", "tag", "freeform"] as const}
+            options={["product", "category", "tag", "freeform", "component"] as const}
             onChange={(v) => updateIng(i, { ref_type: v as IngredientRow["ref_type"] })}
           />
           {row.ref_type === "product" ? (
@@ -323,6 +340,16 @@ export function AddRecipeOverlay({ onClose, onToast, mode = "create", initial }:
                 updateIng(i, { ref_id: v, label: p?.name ?? row.label });
               }}
               placeholder="— pick product —"
+            />
+          ) : row.ref_type === "component" ? (
+            <ConSelect
+              value={row.ref_id}
+              options={components.map((cmp) => ({ value: cmp.id, label: cmp.name, hint: cmp.kind ?? "component" }))}
+              onChange={(v) => {
+                const cmp = components.find((x) => x.id === v);
+                updateIng(i, { ref_id: v, label: cmp?.name ?? row.label });
+              }}
+              placeholder="— pick component —"
             />
           ) : (
             <FormInput
@@ -341,7 +368,7 @@ export function AddRecipeOverlay({ onClose, onToast, mode = "create", initial }:
           />
           <ConSelect
             value={row.unit}
-            options={["ml", "dash", "barspoon", "each", "leaf", "top"] as const}
+            options={UNIT_OPTIONS}
             onChange={(v) => updateIng(i, { unit: v as IngredientRow["unit"] })}
           />
           <FlagToggle

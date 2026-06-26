@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Balance, Method, Unit } from "@backbar/core";
+import { Balance, ComponentKind, Method, Unit } from "@backbar/core";
 
 /**
  * AI structured output contract (spec ai-engine.md §2). The schema is the
@@ -195,10 +195,28 @@ export const ImportedRecipeIngredient = z.object({
   label: z.string().min(1),
   amount: z.number().positive().nullable(),
   unit: Unit.nullable(),
+  /** Prep/qualifier text ("fresh", "freshly grated", "preferably overproof"). */
+  note: z.string().nullable().optional(),
   optional: z.boolean().nullable().optional(),
   garnish: z.boolean().nullable().optional(),
 });
 export type ImportedRecipeIngredient = z.infer<typeof ImportedRecipeIngredient>;
+
+/**
+ * A homemade sub-recipe printed alongside the drink (orgeat, syrup, infusion).
+ * Its ingredients are raw labels like the drink's — usually pantry items.
+ * `ref` is the label the drink uses to call it out (e.g. "mazapán orgeat") so
+ * the importer can wire the build line to the component.
+ */
+export const ImportedComponent = z.object({
+  name: z.string().min(1),
+  kind: ComponentKind.nullable().optional(),
+  ingredients: z.array(ImportedRecipeIngredient).min(1),
+  instructions: z.string().nullable().optional(),
+  yield_ml: z.number().positive().nullable().optional(),
+  keeps: z.string().nullable().optional(),
+});
+export type ImportedComponent = z.infer<typeof ImportedComponent>;
 
 export const ImportedRecipe = z.object({
   name: z.string().min(1),
@@ -209,5 +227,8 @@ export const ImportedRecipe = z.object({
   garnish: z.string().nullable(),
   instructions: z.string().nullable(),
   ingredients: z.array(ImportedRecipeIngredient).min(1),
+  // Homemade sub-recipes the drink depends on. A drink ingredient whose label
+  // matches a component name is wired to it during confirm.
+  components: z.array(ImportedComponent).default([]),
 });
 export type ImportedRecipe = z.infer<typeof ImportedRecipe>;

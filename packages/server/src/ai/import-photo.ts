@@ -1,7 +1,10 @@
 import { createHash } from "node:crypto";
 import { generateObject, type LanguageModel } from "ai";
 import {
+  Component,
   Recipe,
+  type ComponentIngredient,
+  type Component as ComponentT,
   type Product,
   type Recipe as RecipeT,
   type RecipeIngredient,
@@ -16,10 +19,19 @@ export interface ImportPhotoInput {
   media_type: string;
 }
 
+/** A homemade sub-recipe extracted from the image, as a draft Component plus
+ *  whether one with the same id already exists (so the UI can show link-vs-new). */
+export interface ImportedComponentDraft {
+  draft: ComponentT;
+  exists: boolean;
+}
+
 export interface ImportPhotoOk {
   ok: true;
   draft: RecipeT;
   unresolved: string[];
+  /** Homemade components the drink depends on (orgeats/syrups). Empty for simple recipes. */
+  components: ImportedComponentDraft[];
   /** sha256 of the (decoded) image bytes — recorded as provenance on save. */
   image_hash: string;
 }
@@ -32,15 +44,26 @@ export type ImportPhotoResult = ImportPhotoOk | ImportPhotoErr;
 
 export interface ImportPhotoDeps {
   products: Product[];
+  /** Existing shared components — used to flag link-vs-create on import. */
+  components?: ComponentT[];
   model?: LanguageModel;
   generate?: GenerateObjectFn;
 }
 
 const SYSTEM =
-  "Extract the cocktail recipe from this image. Preserve exact proportions " +
-  "and method. Do NOT invent missing fields; leave them null. Use millilitres " +
-  "for liquid amounts where the image gives volume; otherwise the literal unit " +
-  "shown (dash, barspoon, top).";
+  "Extract the cocktail recipe from this image. Preserve EXACT proportions, " +
+  "units, and method — keep the unit the image shows (oz, ml, dash, barspoon, " +
+  "tsp, tbsp, cup, drop, pinch). Do NOT convert oz to ml. Do NOT invent missing " +
+  "fields; leave them null.\n" +
+  "Per-ingredient qualifiers like 'fresh', 'freshly grated', or 'preferably " +
+  "overproof' go in that ingredient's `note`, not its label.\n" +
+  "CRITICAL — homemade sub-recipes: many recipes include a made ingredient with " +
+  "its OWN ingredient list and prep (e.g. an orgeat, syrup, infusion, cordial, " +
+  "or tincture, often printed in a separate block). Put each such sub-recipe in " +
+  "`components` (name, kind, its ingredients, instructions, and shelf life in " +
+  "`keeps`). In the drink's main `ingredients`, still list that made ingredient " +
+  "as one line with its pour amount, labeled to match the component's name — do " +
+  "NOT flatten the sub-recipe's pantry items into the drink.";
 
 /**
  * Recipe photo import (spec ai-engine.md §6).
@@ -86,24 +109,63 @@ export async function importPhoto(
   const provenance = `photo:${image_hash}`;
   const recipeId = slugify(extracted.name);
 
+  // ── Components (homemade sub-recipes) ────────────────────────────────────
+  // Build a draft per extracted component, keyed by a slug id. Existing shared
+  // components with the same id are flagged so the UI shows link-vs-create; the
+  // confirm step skips creating ones that already exist (slug = identity).
+  const existingIds = new Set((deps.components ?? []).map((c) => c.id));
+  const components: ImportedComponentDraft[] = [];
+  // normalized component name → component id, for wiring the drink's build line.
+  const componentByName = new Map<string, string>();
+  for (const comp of extracted.components ?? []) {
+    const compId = slugify(comp.name);
+    componentByName.set(normalize(comp.name), compId);
+    const compIngredients: ComponentIngredient[] = comp.ingredients.map((ci, i) => {
+      // Component inputs are usually pantry items — try a product match, else freeform.
+      const m = matchProduct(ci.label, deps.products);
+      return {
+        ref_type: m ? m.kind : "freeform",
+        ref_id: m ? m.ref : null,
+        label: ci.label,
+        amount: ci.amount ?? null,
+        unit: ci.unit ?? null,
+        note: ci.note ?? null,
+        sort: i,
+      };
+    });
+    const draft = Component.parse({
+      id: compId,
+      name: comp.name,
+      kind: comp.kind ?? null,
+      instructions: comp.instructions ?? null,
+      yield_ml: comp.yield_ml ?? null,
+      keeps: comp.keeps ?? null,
+      ingredients: compIngredients,
+    });
+    components.push({ draft, exists: existingIds.has(compId) });
+  }
+
   const ingredients: RecipeIngredient[] = [];
   const unresolved: string[] = [];
   extracted.ingredients.forEach((ing, idx) => {
-    const match = matchProduct(ing.label, deps.products);
     const base = {
       label: ing.label,
       amount: ing.amount ?? null,
       unit: ing.unit ?? null,
+      note: ing.note ?? null,
       optional: ing.optional ?? false,
       garnish: ing.garnish ?? false,
       sort: idx,
     };
+    // A build line naming a homemade component → wire it to that component.
+    const compId = componentByName.get(normalize(ing.label));
+    if (compId) {
+      ingredients.push({ ref_type: "component", ref_id: compId, ...base });
+      return;
+    }
+    const match = matchProduct(ing.label, deps.products);
     if (match) {
-      ingredients.push({
-        ref_type: match.kind,
-        ref_id: match.ref,
-        ...base,
-      });
+      ingredients.push({ ref_type: match.kind, ref_id: match.ref, ...base });
     } else {
       ingredients.push({ ref_type: "freeform", ref_id: null, ...base });
       unresolved.push(ing.label);
@@ -126,7 +188,7 @@ export async function importPhoto(
     ingredients,
   });
 
-  return { ok: true, draft, unresolved, image_hash };
+  return { ok: true, draft, unresolved, components, image_hash };
 }
 
 interface ProductMatch {
@@ -191,7 +253,12 @@ function matchProduct(label: string, products: Product[]): ProductMatch | null {
 }
 
 function normalize(s: string): string {
-  return s.toLowerCase().replace(/[^a-z0-9\s-]/g, "").trim();
+  return s
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[̀-ͯ]/g, "") // strip diacritics so á→a, ç→c (Mazapán, Cachaça)
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim();
 }
 
 function tokenize(s: string): string[] {

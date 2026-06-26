@@ -4,6 +4,7 @@ import { adminRouter } from "./routes/admin";
 import { aiRouter, inventoryImportRouter, recipesPhotoImportRouter } from "./routes/ai";
 import { bottlesRouter } from "./routes/bottles";
 import { categoriesRouter } from "./routes/categories";
+import { componentsRouter } from "./routes/components";
 import { flagsRouter } from "./routes/flags";
 import { ingestRouter } from "./routes/ingest";
 import { makeableRouter } from "./routes/makeable";
@@ -36,6 +37,7 @@ export function buildApp(deps: Deps) {
   app.route("/flags", flagsRouter(deps));
   app.route("/settings", settingsRouter(deps));
   app.route("/products", productsRouter(deps));
+  app.route("/components", componentsRouter(deps));
   app.route("/bottles", bottlesRouter(deps));
 
   // /recipes lists CRUD and also nests /import-photo + /:id/confirm.

@@ -1,6 +1,8 @@
 import {
   Bottle,
   Category,
+  Component,
+  ComponentIngredient,
   depletePour,
   FlavorProfile,
   Node,
@@ -557,6 +559,7 @@ interface IngredientRow {
   label: string | null;
   amount: number | null;
   unit: string | null;
+  note: string | null;
   optional: number;
   garnish: number;
   sort: number;
@@ -569,6 +572,7 @@ function ingredientFromRow(r: IngredientRow): RecipeIngredient {
     label: r.label,
     amount: r.amount,
     unit: r.unit,
+    note: r.note,
     optional: r.optional === 1,
     garnish: r.garnish === 1,
     sort: r.sort,
@@ -636,8 +640,8 @@ export const recipes = (db: DB) => ({
       for (const ing of parsed.ingredients) {
         db.run(
           `INSERT INTO recipe_ingredient
-           (recipe_id, ref_type, ref_id, label, amount, unit, optional, garnish, sort)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           (recipe_id, ref_type, ref_id, label, amount, unit, note, optional, garnish, sort)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             parsed.id,
             ing.ref_type,
@@ -645,6 +649,7 @@ export const recipes = (db: DB) => ({
             ing.label ?? null,
             ing.amount ?? null,
             ing.unit ?? null,
+            ing.note ?? null,
             bool(ing.optional),
             bool(ing.garnish),
             ing.sort,
@@ -695,6 +700,184 @@ export const recipes = (db: DB) => ({
     })();
   },
 });
+
+// ─── component (reusable made-ingredient) ──────────────────────────────────
+interface ComponentRow {
+  id: string;
+  name: string;
+  kind: string | null;
+  instructions: string | null;
+  yield_ml: number | null;
+  keeps: string | null;
+  notes: string | null;
+  blocks_makeability: number;
+  on_hand: number;
+  created_at: number;
+}
+
+interface ComponentIngredientRow {
+  id: number;
+  component_id: string;
+  ref_type: string;
+  ref_id: string | null;
+  label: string | null;
+  amount: number | null;
+  unit: string | null;
+  note: string | null;
+  sort: number;
+}
+
+function componentIngredientFromRow(r: ComponentIngredientRow): ComponentIngredient {
+  return ComponentIngredient.parse({
+    ref_type: r.ref_type,
+    ref_id: r.ref_id,
+    label: r.label,
+    amount: r.amount,
+    unit: r.unit,
+    note: r.note,
+    sort: r.sort,
+  });
+}
+
+function componentFromRow(r: ComponentRow, ingredients: ComponentIngredient[]): Component {
+  return Component.parse({
+    id: r.id,
+    name: r.name,
+    kind: r.kind,
+    instructions: r.instructions,
+    yield_ml: r.yield_ml,
+    keeps: r.keeps,
+    notes: r.notes,
+    blocks_makeability: r.blocks_makeability === 1,
+    on_hand: r.on_hand === 1,
+    ingredients,
+  });
+}
+
+export const components = (db: DB) => ({
+  deleteAll(): number {
+    const n = db.query<{ c: number }, []>("SELECT COUNT(*) AS c FROM component").get()!.c;
+    db.run("DELETE FROM component");
+    return n;
+  },
+
+  insert(c: Component): Component {
+    const parsed = Component.parse(c);
+    db.transaction(() => {
+      db.run(
+        `INSERT INTO component
+         (id, name, kind, instructions, yield_ml, keeps, notes, blocks_makeability, on_hand, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          parsed.id,
+          parsed.name,
+          parsed.kind ?? null,
+          parsed.instructions ?? null,
+          parsed.yield_ml ?? null,
+          parsed.keeps ?? null,
+          parsed.notes ?? null,
+          bool(parsed.blocks_makeability),
+          bool(parsed.on_hand),
+          Date.now(),
+        ],
+      );
+      insertComponentIngredients(db, parsed.id, parsed.ingredients);
+    })();
+    return parsed;
+  },
+
+  /** Update a component's fields + replace its ingredient set wholesale. */
+  update(c: Component): Component {
+    const parsed = Component.parse(c);
+    db.transaction(() => {
+      db.run(
+        `UPDATE component SET name=?, kind=?, instructions=?, yield_ml=?, keeps=?, notes=?,
+           blocks_makeability=?, on_hand=? WHERE id=?`,
+        [
+          parsed.name,
+          parsed.kind ?? null,
+          parsed.instructions ?? null,
+          parsed.yield_ml ?? null,
+          parsed.keeps ?? null,
+          parsed.notes ?? null,
+          bool(parsed.blocks_makeability),
+          bool(parsed.on_hand),
+          parsed.id,
+        ],
+      );
+      db.run("DELETE FROM component_ingredient WHERE component_id = ?", [parsed.id]);
+      insertComponentIngredients(db, parsed.id, parsed.ingredients);
+    })();
+    return parsed;
+  },
+
+  /** Lightweight toggle of the makeability flags (no ingredient rewrite). */
+  setFlags(id: string, flags: { blocks_makeability?: boolean; on_hand?: boolean }): void {
+    const sets: string[] = [];
+    const args: (number | string)[] = [];
+    if (flags.blocks_makeability !== undefined) {
+      sets.push("blocks_makeability = ?");
+      args.push(flags.blocks_makeability ? 1 : 0);
+    }
+    if (flags.on_hand !== undefined) {
+      sets.push("on_hand = ?");
+      args.push(flags.on_hand ? 1 : 0);
+    }
+    if (!sets.length) return;
+    args.push(id);
+    db.run(`UPDATE component SET ${sets.join(", ")} WHERE id = ?`, args);
+  },
+
+  get(id: string): Component | null {
+    const row = db.query<ComponentRow, [string]>("SELECT * FROM component WHERE id = ?").get(id);
+    if (!row) return null;
+    const ings = db
+      .query<ComponentIngredientRow, [string]>(
+        "SELECT * FROM component_ingredient WHERE component_id = ? ORDER BY sort, id",
+      )
+      .all(id)
+      .map(componentIngredientFromRow);
+    return componentFromRow(row, ings);
+  },
+
+  list(): Component[] {
+    const rows = db.query<ComponentRow, []>("SELECT * FROM component ORDER BY name").all();
+    return rows.map((r) => {
+      const ings = db
+        .query<ComponentIngredientRow, [string]>(
+          "SELECT * FROM component_ingredient WHERE component_id = ? ORDER BY sort, id",
+        )
+        .all(r.id)
+        .map(componentIngredientFromRow);
+      return componentFromRow(r, ings);
+    });
+  },
+
+  /** Returns false when no such component existed. */
+  remove(id: string): boolean {
+    const { changes } = db.run("DELETE FROM component WHERE id = ?", [id]);
+    return changes > 0;
+  },
+});
+
+function insertComponentIngredients(db: DB, componentId: string, ings: ComponentIngredient[]): void {
+  for (const ing of ings) {
+    db.run(
+      `INSERT INTO component_ingredient (component_id, ref_type, ref_id, label, amount, unit, note, sort)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        componentId,
+        ing.ref_type,
+        ing.ref_id ?? null,
+        ing.label ?? null,
+        ing.amount ?? null,
+        ing.unit ?? null,
+        ing.note ?? null,
+        ing.sort,
+      ],
+    );
+  }
+}
 
 // ─── pour ────────────────────────────────────────────────────────────────
 interface PourRow {

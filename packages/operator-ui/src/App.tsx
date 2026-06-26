@@ -17,9 +17,13 @@ import {
   AddRecipeOverlay,
   type RecipeOverlayMode,
 } from "./console/overlays/forms/AddRecipeOverlay";
+import {
+  AddComponentOverlay,
+  type ComponentOverlayMode,
+} from "./console/overlays/forms/AddComponentOverlay";
 import { ImportPhotoOverlay } from "./console/overlays/forms/ImportPhotoOverlay";
 import { BulkImportInventoryOverlay } from "./console/overlays/forms/BulkImportInventoryOverlay";
-import type { Bottle, Product, Recipe } from "@backbar/core";
+import type { Bottle, Component, Product, Recipe } from "@backbar/core";
 import { api, type ProductTagRow } from "./api/client";
 import { RecipeDetailOverlay } from "./console/overlays/RecipeDetail";
 import { TareOverlay } from "./console/overlays/TareOverlay";
@@ -37,6 +41,7 @@ import { Dash } from "./views/Dash";
 import { Menu } from "./views/Menu";
 import { Pours } from "./views/Pours";
 import { Recipes } from "./views/Recipes";
+import { Components } from "./views/Components";
 import { WhatsNewModal } from "./release/WhatsNewModal";
 import { TokenGate } from "./TokenGate";
 import { ChatDock } from "./chat/ChatDock";
@@ -56,6 +61,7 @@ const VIEW_KEYS: readonly ViewKey[] = [
   "bottles",
   "catalog",
   "recipes",
+  "components",
   "pours",
   "shelf",
   "menu",
@@ -141,6 +147,9 @@ export function App() {
   >(null);
   const [recipeOverlay, setRecipeOverlay] = useState<
     { mode: RecipeOverlayMode; initial?: Recipe } | null
+  >(null);
+  const [componentOverlay, setComponentOverlay] = useState<
+    { mode: ComponentOverlayMode; initial?: Component } | null
   >(null);
   const [importPhotoOpen, setImportPhotoOpen] = useState(false);
   const [bulkImportOpen, setBulkImportOpen] = useState(false);
@@ -318,6 +327,16 @@ export function App() {
                 />
               }
             />
+            <Route
+              path="/components"
+              element={
+                <Components
+                  onAddComponent={() => setComponentOverlay({ mode: "create" })}
+                  onEditComponent={(c) => setComponentOverlay({ mode: "edit", initial: c })}
+                  onToast={pushToast}
+                />
+              }
+            />
             <Route path="/pours" element={<Pours />} />
             <Route
               path="/shelf"
@@ -436,6 +455,14 @@ export function App() {
             mode={recipeOverlay.mode}
             initial={recipeOverlay.initial}
             onClose={() => setRecipeOverlay(null)}
+            onToast={pushToast}
+          />
+        ) : null}
+        {componentOverlay ? (
+          <AddComponentOverlay
+            mode={componentOverlay.mode}
+            initial={componentOverlay.initial}
+            onClose={() => setComponentOverlay(null)}
             onToast={pushToast}
           />
         ) : null}

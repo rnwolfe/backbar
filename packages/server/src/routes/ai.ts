@@ -3,6 +3,7 @@ import type { UIMessage } from "ai";
 import { coverage, type Product } from "@backbar/core";
 import {
   bottles as bottlesRepo,
+  components as componentsRepo,
   products as productsRepo,
   recipes as recipesRepo,
 } from "@backbar/db";
@@ -384,7 +385,8 @@ export function recipesPhotoImportRouter(
     }
 
     const products = productsRepo(deps.db).list();
-    const result = await importPhoto(parsed.data, { products });
+    const existingComponents = componentsRepo(deps.db).list();
+    const result = await importPhoto(parsed.data, { products, components: existingComponents });
     if (!result.ok) {
       if (result.reason === "no-model") {
         return err(c, 503, "ai-disabled", "no gateway model available");
@@ -394,6 +396,7 @@ export function recipesPhotoImportRouter(
     return c.json({
       draft: result.draft,
       unresolved: result.unresolved,
+      components: result.components,
       image_hash: result.image_hash,
     });
   });

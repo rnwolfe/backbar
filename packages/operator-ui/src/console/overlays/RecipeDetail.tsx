@@ -37,6 +37,15 @@ export function RecipeDetailOverlay({
 }) {
   const bottlesRaw = useStore((s) => s.bottles);
   const products = useStore((s) => s.products);
+  const allComponents = useStore((s) => s.components);
+
+  // Homemade components this recipe's build lines reference (ref_type:"component").
+  const referencedComponents = useMemo(() => {
+    const ids = recipe.raw.ingredients
+      .filter((i) => i.ref_type === "component" && i.ref_id)
+      .map((i) => i.ref_id as string);
+    return ids.map((id) => allComponents.find((c) => c.id === id)).filter((c): c is NonNullable<typeof c> => !!c);
+  }, [recipe, allComponents]);
   const { isMobile } = useViewport();
   const decorated = useMemo(() => bottlesRaw.map(decorateBottle), [bottlesRaw]);
 
@@ -292,6 +301,58 @@ export function RecipeDetailOverlay({
               ))}
             </div>
           </Cell>
+
+          {referencedComponents.length > 0 ? (
+            <Cell title="PREP · COMPONENTS" right={`${referencedComponents.length} homemade`}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 6 }}>
+                {referencedComponents.map((comp) => (
+                  <div key={comp.id} style={{ borderBottom: `1px solid ${T.hairline}`, paddingBottom: 8 }}>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                      <span style={{ fontSize: 14, fontWeight: 600, color: T.ink, flex: 1 }}>
+                        {comp.name}
+                        {comp.kind ? (
+                          <span style={{ color: T.inkDim, fontFamily: T.mono, fontSize: 10 }}> · {comp.kind}</span>
+                        ) : null}
+                      </span>
+                      {comp.blocks_makeability ? (
+                        <span
+                          title={
+                            comp.on_hand
+                              ? "a batch is on hand"
+                              : "needs to be prepped — this gates the recipe's makeability"
+                          }
+                          style={{
+                            fontSize: 9,
+                            fontFamily: T.mono,
+                            letterSpacing: "0.1em",
+                            color: comp.on_hand ? T.green : T.amber,
+                          }}
+                        >
+                          {comp.on_hand ? "● ON HAND" : "○ NEEDS PREP"}
+                        </span>
+                      ) : null}
+                      {comp.keeps ? (
+                        <span style={{ fontSize: 10, fontFamily: T.mono, color: T.inkDim }}>keeps {comp.keeps}</span>
+                      ) : null}
+                    </div>
+                    <div style={{ fontSize: 12, fontFamily: T.mono, color: T.inkMuted, marginTop: 4, lineHeight: 1.6 }}>
+                      {comp.ingredients
+                        .map(
+                          (ci) =>
+                            `${ci.amount != null ? `${ci.amount}${ci.unit ?? ""} ` : ""}${ci.label ?? ci.ref_id ?? ""}`,
+                        )
+                        .join(" · ")}
+                    </div>
+                    {comp.instructions ? (
+                      <div style={{ fontSize: 12, color: T.inkMuted, marginTop: 4, fontStyle: "italic", lineHeight: 1.5 }}>
+                        {comp.instructions}
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </Cell>
+          ) : null}
 
           <Cell title="PREDICTED BALANCE" right="six axes · 0–1">
             <div style={{ display: "flex", gap: 18, padding: "10px 0", alignItems: "flex-end" }}>

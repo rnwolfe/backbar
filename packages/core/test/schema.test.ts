@@ -59,7 +59,9 @@ describe("Recipe / RecipeIngredient", () => {
 
   test("ingredient ref_type enum + unit enum enforced", () => {
     expect(() => RecipeIngredient.parse({ ref_type: "magic" })).toThrow();
-    expect(() => RecipeIngredient.parse({ ref_type: "product", unit: "tbsp" })).toThrow();
+    expect(() => RecipeIngredient.parse({ ref_type: "product", unit: "gallon" })).toThrow();
+    // oz/tbsp/component are now valid (cocktail-book units + made-component refs).
+    expect(() => RecipeIngredient.parse({ ref_type: "component", unit: "oz" })).not.toThrow();
   });
 });
 

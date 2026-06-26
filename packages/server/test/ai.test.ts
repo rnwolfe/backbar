@@ -356,6 +356,67 @@ describe("ai/import-photo", () => {
     }
   });
 
+  test("complex recipe: wires a homemade component + preserves oz/note", async () => {
+    const image_b64 = Buffer.from("mazapan-infante").toString("base64");
+    const result = await importPhoto(
+      { image_b64, media_type: "image/jpeg" },
+      {
+        products,
+        components: [], // none exist yet → the orgeat is "new"
+        model: dummyModel,
+        generate: (async () =>
+          ({
+            object: {
+              name: "Mazapán Infante",
+              family: null,
+              method: "shake",
+              glass: "rocks",
+              ice: "pebble",
+              garnish: "freshly grated nutmeg",
+              instructions: "Short shake, pour unstrained.",
+              ingredients: [
+                { label: "blanco tequila", amount: 2, unit: "oz" },
+                { label: "lime juice", amount: 0.75, unit: "oz", note: "fresh" },
+                { label: "mazapán orgeat", amount: 0.75, unit: "oz" },
+              ],
+              components: [
+                {
+                  name: "Mazapán Orgeat",
+                  kind: "orgeat",
+                  instructions: "Blend until smooth.",
+                  keeps: "2 weeks refrigerated",
+                  ingredients: [
+                    { label: "almond milk", amount: 4, unit: "cup" },
+                    { label: "sugar", amount: 3, unit: "cup" },
+                    { label: "crumbled mazapán candy", amount: 1.5, unit: "cup" },
+                  ],
+                },
+              ],
+            },
+          }) as never) as never,
+      },
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    // The made ingredient is wired to a component, not flattened or left freeform.
+    const orgeatLine = result.draft.ingredients.find((i) => i.label === "mazapán orgeat");
+    expect(orgeatLine?.ref_type).toBe("component");
+    expect(orgeatLine?.ref_id).toBe("mazapan-orgeat");
+    expect(orgeatLine?.unit).toBe("oz");
+    // oz + note preserved on the real pour lines.
+    const lime = result.draft.ingredients.find((i) => i.label === "lime juice");
+    expect(lime?.unit).toBe("oz");
+    expect(lime?.note).toBe("fresh");
+    // The component came back as a new draft with its own pantry ingredients.
+    expect(result.components).toHaveLength(1);
+    expect(result.components[0]?.exists).toBe(false);
+    expect(result.components[0]?.draft.id).toBe("mazapan-orgeat");
+    expect(result.components[0]?.draft.keeps).toBe("2 weeks refrigerated");
+    expect(result.components[0]?.draft.ingredients).toHaveLength(3);
+    expect(result.components[0]?.draft.ingredients[0]?.ref_type).toBe("freeform");
+  });
+
   test("provenance hash reflects decoded image bytes (stable across encodings)", async () => {
     const bytes = Buffer.from([1, 2, 3, 4, 5]);
     const r1 = await importPhoto(

@@ -1,6 +1,7 @@
 import type {
   Bottle,
   Category,
+  Component,
   Node as NodeRow,
   Product,
   Reading,
@@ -154,9 +155,19 @@ export interface ImportedRecipeDraft {
   ingredients: { label: string; amount: number | null; unit: string | null }[];
 }
 
+/** A homemade component the importer extracted, plus whether one with the same
+ *  id already exists (link) vs needs creating (new). */
+export interface ImportedComponentDraft {
+  draft: Component;
+  exists: boolean;
+}
+
 export interface RecipePhotoImportResponse {
-  draft: ImportedRecipeDraft;
+  /** Full draft recipe — ingredients already carry resolved ref_type +
+   *  component links (a homemade ingredient is `ref_type:"component"`). */
+  draft: Recipe;
   unresolved: string[];
+  components: ImportedComponentDraft[];
   image_hash: string;
 }
 
@@ -390,6 +401,31 @@ export const api = {
     ),
   createRecipe: (recipe: unknown) =>
     req<Recipe>("/recipes", { method: "POST", body: JSON.stringify(recipe) }),
+  // Confirm a photo-import draft (persists the recipe + any new components).
+  confirmRecipePhoto: (id: string, body: unknown) =>
+    req<Recipe>(`/recipes/${encodeURIComponent(id)}/confirm`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  // ── Components (reusable made-ingredients) ──────────────────────────────
+  components: () => req<Component[]>("/components"),
+  getComponent: (id: string) =>
+    req<Component & { used_by: { id: string; name: string }[] }>(`/components/${encodeURIComponent(id)}`),
+  createComponent: (component: unknown) =>
+    req<Component>("/components", { method: "POST", body: JSON.stringify(component) }),
+  updateComponent: (id: string, component: unknown) =>
+    req<Component>(`/components/${encodeURIComponent(id)}`, {
+      method: "PUT",
+      body: JSON.stringify(component),
+    }),
+  // Toggle makeability flags without resending the whole component.
+  patchComponent: (id: string, flags: { blocks_makeability?: boolean; on_hand?: boolean }) =>
+    req<Component>(`/components/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      body: JSON.stringify(flags),
+    }),
+  deleteComponent: (id: string) =>
+    req<{ ok: boolean; id: string }>(`/components/${encodeURIComponent(id)}`, { method: "DELETE" }),
   patchRecipe: (id: string, patch: unknown) =>
     req<Recipe>(`/recipes/${encodeURIComponent(id)}`, {
       method: "PATCH",

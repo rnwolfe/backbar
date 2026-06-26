@@ -117,6 +117,7 @@ const TABS: Tab[] = [
   { id: "dash", label: "DASH", short: "Dash", icon: "▣" },
   { id: "bottles", label: "BOTTLES", short: "Bottles", icon: "▥" },
   { id: "recipes", label: "RECIPES", short: "Recipes", icon: "▦" },
+  { id: "components", label: "PREP", short: "Prep", icon: "⚗" },
   { id: "catalog", label: "CATALOG", short: "Catalog", icon: "▤" },
   { id: "pours", label: "POURS", short: "Pours", icon: "▧" },
   { id: "shelf", label: "SHELF", short: "Shelf", icon: "▩" },

@@ -19,6 +19,7 @@ export {
   bottles,
   readings,
   recipes,
+  components,
   pours,
   sensorChannels,
   nodes,

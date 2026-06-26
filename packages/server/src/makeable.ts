@@ -7,6 +7,7 @@ import {
 } from "@backbar/core";
 import {
   bottles as bottlesRepo,
+  components as componentsRepo,
   productTags as productTagsRepo,
   products as productsRepo,
   recipes as recipesRepo,
@@ -73,9 +74,14 @@ export class MakeableCache {
   recompute(): { changed: { recipe_id: string; state: MakeabilityState }[]; snapshot: MakeableItem[] } {
     const inv = loadInventory(this.db);
     const recipes: Recipe[] = recipesRepo(this.db).list();
+    // Component gating: pass the blocks/on-hand flags so component build lines
+    // can block makeability when they opt in and aren't currently prepped.
+    const components = componentsRepo(this.db)
+      .list()
+      .map((c) => ({ id: c.id, blocks_makeability: c.blocks_makeability, on_hand: c.on_hand }));
 
     const next: MakeableItem[] = recipes.map((r) => ({
-      ...evaluate(r, inv),
+      ...evaluate(r, inv, { components }),
       recipe: {
         name: r.name,
         family: r.family,

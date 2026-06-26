@@ -1,5 +1,5 @@
 import { useEffect, useRef, useSyncExternalStore } from "react";
-import type { Category, Product, Recipe } from "@backbar/core";
+import type { Category, Component, Product, Recipe } from "@backbar/core";
 import {
   api,
   type BottleWithProduct,
@@ -22,6 +22,7 @@ export type ViewKey =
   | "bottles"
   | "catalog"
   | "recipes"
+  | "components"
   | "pours"
   | "shelf"
   | "menu"
@@ -70,6 +71,7 @@ export interface AppStore {
   products: Product[];
   bottles: BottleWithProduct[];
   recipes: Recipe[];
+  components: Component[];
   makeable: MakeableItem[];
   nodes: NodeWithChannels[];
   shopping: ShoppingList;
@@ -96,6 +98,7 @@ const initial: AppStore = {
   products: [],
   bottles: [],
   recipes: [],
+  components: [],
   makeable: [],
   nodes: [],
   shopping: { low: [], muse: [] },
@@ -161,6 +164,7 @@ export const store = {
       products,
       bottles,
       recipes,
+      components,
       makeable,
       nodes,
       shopping,
@@ -175,6 +179,7 @@ export const store = {
       api.products(),
       api.bottles(),
       api.recipes(),
+      api.components().catch<Component[]>(() => []),
       api.makeable(),
       api.nodes(),
       api.shopping(),
@@ -191,6 +196,7 @@ export const store = {
       products,
       bottles,
       recipes,
+      components,
       makeable,
       nodes,
       shopping,
@@ -215,6 +221,14 @@ export const store = {
       set({ recipes });
     } catch {
       // Non-blocking — the Menu view keeps its local selection until next hydrate.
+    }
+  },
+  async refreshComponents() {
+    try {
+      const components = await api.components();
+      set({ components });
+    } catch {
+      // Non-blocking — the Components view keeps last known state until next hydrate.
     }
   },
   async refreshCategories() {

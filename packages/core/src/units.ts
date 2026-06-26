@@ -1,11 +1,19 @@
 import type { Unit } from "./schema";
 
 // `top` ≈ 60 ml splash to top a highball; `dash`/`barspoon` per spec §6.
+// `oz`/`tsp`/`tbsp`/`cup` are US customary (printed-recipe + component-yield units).
+// `drop` ≈ 0.05 ml; `pinch` is a tiny dry measure treated as ~0.3 ml of bulk.
 // `each` and `leaf` are counted, not volumetric — they never deplete a bottle.
 export const UNIT_ML: Record<Unit, number> = {
   ml: 1,
+  oz: 29.5735,
   dash: 0.9,
   barspoon: 5,
+  tsp: 4.92892,
+  tbsp: 14.7868,
+  cup: 236.588,
+  drop: 0.05,
+  pinch: 0.3,
   top: 60,
   each: 0,
   leaf: 0,

@@ -3,8 +3,24 @@ import { z } from "zod";
 // ─── primitive enums ──────────────────────────────────────────────────────
 export const Source = z.enum(["manual", "weight", "pour"]);
 export const Status = z.enum(["sealed", "open", "empty", "archived"]);
-export const RefType = z.enum(["product", "category", "tag", "freeform"]);
-export const Unit = z.enum(["ml", "dash", "barspoon", "each", "leaf", "top"]);
+// `component` refs a reusable made-ingredient (orgeat, syrup, infusion) — see Component.
+export const RefType = z.enum(["product", "category", "tag", "freeform", "component"]);
+// Cocktail-book units. `ml` is canonical for makeability/depletion math (see units.ts);
+// the rest convert to ml. oz/tsp/tbsp/cup are common in printed recipes + component yields.
+export const Unit = z.enum([
+  "ml",
+  "oz",
+  "dash",
+  "barspoon",
+  "tsp",
+  "tbsp",
+  "cup",
+  "drop",
+  "pinch",
+  "each",
+  "leaf",
+  "top",
+]);
 export const Method = z.enum(["build", "stir", "shake", "swizzle", "blend", "throw"]);
 export const RecipeSource = z.enum(["book", "me", "ai", "photo-import"]);
 export const NodeStatus = z.enum(["online", "offline"]);
@@ -130,6 +146,8 @@ export const RecipeIngredient = z.object({
   label: z.string().nullish(),
   amount: z.number().positive().nullish(),
   unit: Unit.nullish(),
+  /** Free-text prep/qualifier, e.g. "freshly grated", "preferably overproof". */
+  note: z.string().nullish(),
   optional: z.coerce.boolean().default(false),
   garnish: z.coerce.boolean().default(false),
   sort: z.number().int().default(0),
@@ -154,6 +172,58 @@ export const Recipe = z.object({
   ingredients: z.array(RecipeIngredient).default([]),
 });
 export type Recipe = z.infer<typeof Recipe>;
+
+// ─── component (reusable made-ingredient) ──────────────────────────────────
+// A homemade sub-recipe — orgeat, syrup, infusion, cordial, tincture — that a
+// recipe references as a single build line (`ref_type:"component"`). Reusable:
+// one component serves many recipes. Its own ingredients are usually pantry
+// items (`ref_type:"freeform"` with a label), so they never touch the bottle
+// catalog or makeability. `keeps` is a free-text shelf life ("2 weeks
+// refrigerated"); `yield_ml` lets the UI sanity-check batch sizes.
+export const ComponentKind = z.enum([
+  "orgeat",
+  "syrup",
+  "infusion",
+  "cordial",
+  "tincture",
+  "mix",
+  "other",
+]);
+export type ComponentKind = z.infer<typeof ComponentKind>;
+
+// A component's own ingredient. Same shape as a recipe ingredient minus the
+// drink-specific flags (optional/garnish) — a prep step's inputs are just
+// "amount of thing". `ref_type:"component"` allows nesting (a syrup that uses
+// another syrup), though most are freeform pantry items.
+export const ComponentIngredient = z.object({
+  ref_type: RefType,
+  ref_id: z.string().nullish(),
+  label: z.string().nullish(),
+  amount: z.number().positive().nullish(),
+  unit: Unit.nullish(),
+  note: z.string().nullish(),
+  sort: z.number().int().default(0),
+});
+export type ComponentIngredient = z.infer<typeof ComponentIngredient>;
+
+export const Component = z.object({
+  id: Slug,
+  name: z.string().min(1),
+  kind: ComponentKind.nullish(),
+  instructions: z.string().nullish(),
+  yield_ml: z.number().positive().nullish(),
+  keeps: z.string().nullish(),
+  notes: z.string().nullish(),
+  // Makeability gating. `blocks_makeability` opts this component IN to gating
+  // (default off — a simple syrup you can whip up shouldn't block a drink). When
+  // it blocks, the drink is only makeable if `on_hand` is true (you've prepped a
+  // batch). Trivial components stay non-blocking; specialty ones (needing an
+  // unusual ingredient) can require being on hand. See makeability.evaluate.
+  blocks_makeability: z.coerce.boolean().default(false),
+  on_hand: z.coerce.boolean().default(false),
+  ingredients: z.array(ComponentIngredient).default([]),
+});
+export type Component = z.infer<typeof Component>;
 
 // ─── pour ────────────────────────────────────────────────────────────────
 export const PourBinding = z.object({
