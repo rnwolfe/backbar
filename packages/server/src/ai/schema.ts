@@ -226,6 +226,10 @@ export const ImportedRecipe = z.object({
   ice: z.string().nullable(),
   garnish: z.string().nullable(),
   instructions: z.string().nullable(),
+  // Human credit printed with the recipe (don't invent — null if absent).
+  author: z.string().nullable().optional(), // creator/bartender
+  origin: z.string().nullable().optional(), // bar / book / place (+ location)
+  notes: z.string().nullable().optional(), // headnote / story / context
   ingredients: z.array(ImportedRecipeIngredient).min(1),
   // Homemade sub-recipes the drink depends on. A drink ingredient whose label
   // matches a component name is wired to it during confirm.

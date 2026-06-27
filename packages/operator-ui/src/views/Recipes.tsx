@@ -66,6 +66,10 @@ export function Recipes({
   const [aiMode, setAiMode] = useState<AiMode>("now");
   const [aiRiffRecipeId, setAiRiffRecipeId] = useState<string | undefined>(undefined);
   const [aiState, setAiState] = useState<AiState>({ kind: "idle" });
+  // On mobile the AI panel is collapsed by default so it doesn't bury the list;
+  // on desktop it's the always-open right rail.
+  const [aiOpen, setAiOpen] = useState(false);
+  const aiExpanded = !isMobile || aiOpen;
 
   const families = useMemo(() => {
     const counts = new Map<string, number>();
@@ -357,16 +361,43 @@ export function Recipes({
           borderTop: isMobile ? `1px solid ${T.hairline}` : "none",
           background: T.surface,
           flexShrink: 0,
+          // Cap the panel on mobile so it scrolls internally instead of burying
+          // the recipe list; full-height rail on desktop.
+          maxHeight: isMobile ? "55vh" : undefined,
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
         }}
       >
-        <SectionHead right="vercel · gw">AI MIXOLOGY</SectionHead>
+        {isMobile ? (
+          <button
+            type="button"
+            onClick={() => setAiOpen((o) => !o)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "12px 16px",
+              background: "transparent",
+              border: "none",
+              borderBottom: aiExpanded ? `1px solid ${T.hairline}` : "none",
+              color: T.inkMuted,
+              fontFamily: T.mono,
+              fontSize: 11,
+              letterSpacing: "0.14em",
+              cursor: "pointer",
+            }}
+          >
+            <span>✦ AI MIXOLOGY</span>
+            <span style={{ color: A }}>{aiOpen ? "▾ HIDE" : "▸ IDEATE"}</span>
+          </button>
+        ) : (
+          <SectionHead right="vercel · gw">AI MIXOLOGY</SectionHead>
+        )}
         <div
           style={{
             padding: "14px 16px",
-            display: "flex",
+            display: aiExpanded ? "flex" : "none",
             flexDirection: "column",
             gap: 12,
             overflow: "auto",

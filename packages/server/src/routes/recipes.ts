@@ -50,7 +50,7 @@ export function recipesRouter(deps: Deps) {
       deps.db.run(
         `UPDATE recipe SET
            name=?, family=?, method=?, glass=?, ice=?, garnish=?, instructions=?,
-           source=?, provenance=?, abv_estimate=?, balance=?, is_published=?, tags=?
+           source=?, provenance=?, author=?, origin=?, notes=?, abv_estimate=?, balance=?, is_published=?, tags=?
          WHERE id=?`,
         [
           merged.name,
@@ -62,6 +62,9 @@ export function recipesRouter(deps: Deps) {
           merged.instructions ?? null,
           merged.source ?? null,
           merged.provenance ?? null,
+          merged.author ?? null,
+          merged.origin ?? null,
+          merged.notes ?? null,
           merged.abv_estimate ?? null,
           merged.balance ? JSON.stringify(merged.balance) : null,
           merged.is_published ? 1 : 0,
@@ -76,8 +79,8 @@ export function recipesRouter(deps: Deps) {
         for (const ing of merged.ingredients) {
           deps.db.run(
             `INSERT INTO recipe_ingredient
-               (recipe_id, ref_type, ref_id, label, amount, unit, optional, garnish, sort)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+               (recipe_id, ref_type, ref_id, label, amount, unit, note, optional, garnish, sort)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
               id,
               ing.ref_type,
@@ -85,6 +88,7 @@ export function recipesRouter(deps: Deps) {
               ing.label ?? null,
               ing.amount ?? null,
               ing.unit ?? null,
+              ing.note ?? null,
               ing.optional ? 1 : 0,
               ing.garnish ? 1 : 0,
               ing.sort,

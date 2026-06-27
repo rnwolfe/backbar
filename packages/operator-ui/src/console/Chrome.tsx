@@ -499,6 +499,99 @@ export function BottomNav({ view, onNav, accentColor, hiddenTabs }: BottomNavPro
   );
 }
 
+/**
+ * Meaningful line icons per nav destination (replaces the old box glyphs that
+ * rendered as blank squares on mobile). 24×24, stroke = currentColor so they
+ * inherit the tab's active/inactive color.
+ */
+export function NavIcon({ id, size = 22 }: { id: ViewKey | "more"; size?: number }) {
+  const paths: Record<string, JSX.Element> = {
+    // dashboard — 2×2 panes
+    dash: (
+      <>
+        <rect x="3" y="3" width="7" height="7" rx="1" />
+        <rect x="14" y="3" width="7" height="7" rx="1" />
+        <rect x="3" y="14" width="7" height="7" rx="1" />
+        <rect x="14" y="14" width="7" height="7" rx="1" />
+      </>
+    ),
+    // bottle
+    bottles: <path d="M10 2.5h4v3l1.2 2.6c.2.5.3 1 .3 1.6V20a1.5 1.5 0 0 1-1.5 1.5h-4A1.5 1.5 0 0 1 8.5 20V9.7c0-.6.1-1.1.3-1.6L10 5.5z" />,
+    // martini glass
+    recipes: (
+      <>
+        <path d="M4.5 5h15l-7.5 8.5z" />
+        <path d="M12 13.5V20" />
+        <path d="M7.5 20.5h9" />
+      </>
+    ),
+    // erlenmeyer flask (prep / components)
+    components: (
+      <>
+        <path d="M9 3h6" />
+        <path d="M10 3v6.5L5.4 18A1.4 1.4 0 0 0 6.6 20h10.8a1.4 1.4 0 0 0 1.2-2L14 9.5V3" />
+        <path d="M8 15h8" />
+      </>
+    ),
+    // tagged list (catalog)
+    catalog: (
+      <>
+        <path d="M9 6h11M9 12h11M9 18h11" />
+        <circle cx="4.5" cy="6" r="1.1" />
+        <circle cx="4.5" cy="12" r="1.1" />
+        <circle cx="4.5" cy="18" r="1.1" />
+      </>
+    ),
+    // droplet (pours)
+    pours: <path d="M12 3.5c0 0 6 6 6 9.8a6 6 0 0 1-12 0C6 9.5 12 3.5 12 3.5z" />,
+    // shelf with bottles
+    shelf: (
+      <>
+        <path d="M3 9h18M3 16h18" />
+        <path d="M7 9V6.5M10 9V6.5M14 16v-3M17 16v-3" />
+      </>
+    ),
+    // menu card
+    menu: (
+      <>
+        <rect x="6" y="3" width="12" height="18" rx="1.5" />
+        <path d="M9 8h6M9 12h6M9 16h4" />
+      </>
+    ),
+    // sliders (settings)
+    settings: (
+      <>
+        <path d="M4 8h9M17 8h3M4 16h3M11 16h9" />
+        <circle cx="15" cy="8" r="2" />
+        <circle cx="9" cy="16" r="2" />
+      </>
+    ),
+    // overflow dots
+    more: (
+      <>
+        <circle cx="5" cy="12" r="1.6" fill="currentColor" stroke="none" />
+        <circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none" />
+        <circle cx="19" cy="12" r="1.6" fill="currentColor" stroke="none" />
+      </>
+    ),
+  };
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      {paths[id] ?? paths.dash}
+    </svg>
+  );
+}
+
 function BottomTab({
   tab,
   active,
@@ -530,7 +623,7 @@ function BottomTab({
         minHeight: 56,
       }}
     >
-      <span style={{ fontSize: 18, fontFamily: T.mono, lineHeight: 1 }}>{tab.icon}</span>
+      <NavIcon id={tab.id} size={22} />
       <span style={{ fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase" }}>{tab.short}</span>
     </button>
   );
@@ -621,7 +714,7 @@ function MoreSheet({
                 minHeight: 56,
               }}
             >
-              <span style={{ fontFamily: T.mono, fontSize: 18 }}>{t.icon}</span>
+              <NavIcon id={t.id} size={20} />
               <span>{t.short}</span>
             </button>
           ))}

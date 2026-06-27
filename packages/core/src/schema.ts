@@ -164,7 +164,13 @@ export const Recipe = z.object({
   garnish: z.string().nullish(),
   instructions: z.string().nullish(),
   source: RecipeSource.nullish(),
+  // `provenance` is the machine audit trail (e.g. "photo:<hash>"). Human credit
+  // is separate: `author` = creator/bartender, `origin` = the bar/book/place it
+  // came from, `notes` = the headnote/story printed alongside the recipe.
   provenance: z.string().nullish(),
+  author: z.string().nullish(),
+  origin: z.string().nullish(),
+  notes: z.string().nullish(),
   abv_estimate: z.number().min(0).max(1).nullish(),
   balance: Balance.nullish(),
   is_published: z.coerce.boolean().default(false),

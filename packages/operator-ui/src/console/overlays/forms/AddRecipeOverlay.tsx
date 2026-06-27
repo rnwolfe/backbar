@@ -70,6 +70,9 @@ interface SeedState {
   ice: string;
   garnish: string;
   instructions: string;
+  author: string;
+  origin: string;
+  notes: string;
   isPublished: boolean;
   ingredients: IngredientRow[];
   tags: string[];
@@ -87,6 +90,9 @@ function recipeToSeed(mode: RecipeOverlayMode, initial?: Recipe): SeedState {
       ice: "large-format",
       garnish: "",
       instructions: "",
+      author: "",
+      origin: "",
+      notes: "",
       isPublished: false,
       ingredients: [{ ...EMPTY_ING }],
       tags: [],
@@ -101,6 +107,9 @@ function recipeToSeed(mode: RecipeOverlayMode, initial?: Recipe): SeedState {
     ice: initial.ice ?? "",
     garnish: initial.garnish ?? "",
     instructions: initial.instructions ?? "",
+    author: initial.author ?? "",
+    origin: initial.origin ?? "",
+    notes: initial.notes ?? "",
     isPublished: initial.is_published,
     ingredients:
       initial.ingredients.length > 0
@@ -132,6 +141,9 @@ export function AddRecipeOverlay({ onClose, onToast, mode = "create", initial }:
   const [ice, setIce] = useState(seed.ice);
   const [garnish, setGarnish] = useState(seed.garnish);
   const [instructions, setInstructions] = useState(seed.instructions);
+  const [author, setAuthor] = useState(seed.author);
+  const [origin, setOrigin] = useState(seed.origin);
+  const [notes, setNotes] = useState(seed.notes);
   const [isPublished, setIsPublished] = useState(seed.isPublished);
   const [ingredients, setIngredients] = useState<IngredientRow[]>(seed.ingredients);
   const [tags, setTags] = useState<string[]>(seed.tags);
@@ -178,7 +190,12 @@ export function AddRecipeOverlay({ onClose, onToast, mode = "create", initial }:
       ice: ice || null,
       garnish: garnish.trim() || null,
       instructions: instructions.trim() || null,
+      author: author.trim() || null,
+      origin: origin.trim() || null,
+      notes: notes.trim() || null,
       source: isEdit ? initial?.source ?? "me" : "me",
+      // preserve the import audit trail when editing a photo-imported recipe
+      provenance: isEdit ? initial?.provenance ?? null : null,
       is_published: isPublished,
       tags,
       ingredients: ingredients
@@ -289,6 +306,23 @@ export function AddRecipeOverlay({ onClose, onToast, mode = "create", initial }:
           value={instructions}
           onChange={(e) => setInstructions(e.target.value)}
           placeholder="Stir all ingredients with ice until well chilled; strain over large ice."
+        />
+      </FormRow>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        <FormRow label="Author" hint="creator / bartender">
+          <FormInput value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="Max Reis" />
+        </FormRow>
+        <FormRow label="Origin" hint="bar / book / place">
+          <FormInput value={origin} onChange={(e) => setOrigin(e.target.value)} placeholder="Daisy Margarita Bar, Sherman Oaks CA" />
+        </FormRow>
+      </div>
+      <FormRow label="Notes" hint="headnote / story / credit context">
+        <FormTextarea
+          rows={2}
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="The story or context printed alongside the recipe."
         />
       </FormRow>
 

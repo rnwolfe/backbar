@@ -57,6 +57,10 @@ const SYSTEM =
   "fields; leave them null.\n" +
   "Per-ingredient qualifiers like 'fresh', 'freshly grated', or 'preferably " +
   "overproof' go in that ingredient's `note`, not its label.\n" +
+  "CREDIT: capture the attribution printed with the recipe — `author` (the " +
+  "creating bartender), `origin` (the bar / book / establishment, with city/" +
+  "state if shown), and `notes` (the headnote or story paragraph). Leave any " +
+  "that aren't present null; never invent them.\n" +
   "CRITICAL — homemade sub-recipes: many recipes include a made ingredient with " +
   "its OWN ingredient list and prep (e.g. an orgeat, syrup, infusion, cordial, " +
   "or tincture, often printed in a separate block). Put each such sub-recipe in " +
@@ -183,6 +187,9 @@ export async function importPhoto(
     instructions: extracted.instructions ?? null,
     source: "photo-import",
     provenance,
+    author: extracted.author ?? null,
+    origin: extracted.origin ?? null,
+    notes: extracted.notes ?? null,
     is_published: false,
     tags: [],
     ingredients,

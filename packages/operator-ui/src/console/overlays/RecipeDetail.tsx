@@ -47,6 +47,10 @@ export function RecipeDetailOverlay({
     return ids.map((id) => allComponents.find((c) => c.id === id)).filter((c): c is NonNullable<typeof c> => !!c);
   }, [recipe, allComponents]);
   const { isMobile } = useViewport();
+  // The "make this drink" rail is collapsed by default on mobile so the spec is
+  // visible first; always-open rail on desktop.
+  const [makeOpen, setMakeOpen] = useState(false);
+  const makeExpanded = !isMobile || makeOpen;
   const decorated = useMemo(() => bottlesRaw.map(decorateBottle), [bottlesRaw]);
 
   const axes = ["sweet", "sour", "bitter", "strong", "aromatic", "dilution"];
@@ -225,6 +229,11 @@ export function RecipeDetailOverlay({
             >
               {recipe.name}
             </div>
+            {recipe.raw.author || recipe.raw.origin ? (
+              <div style={{ fontSize: 12, color: T.inkMuted, marginTop: 6, fontStyle: "italic" }}>
+                {[recipe.raw.author, recipe.raw.origin].filter(Boolean).join(" · ")}
+              </div>
+            ) : null}
             <div
               style={{
                 display: "flex",
@@ -253,6 +262,21 @@ export function RecipeDetailOverlay({
               </span>
             </div>
           </div>
+
+          {recipe.raw.notes ? (
+            <div
+              style={{
+                fontSize: 13,
+                color: T.inkMuted,
+                lineHeight: 1.6,
+                fontStyle: "italic",
+                borderLeft: `2px solid ${T.hairline2}`,
+                padding: "2px 0 2px 12px",
+              }}
+            >
+              {recipe.raw.notes}
+            </div>
+          ) : null}
 
           <Cell title="SPECIFICATION" right={`${recipe.ingredients.length} ingredients`}>
             <div style={{ display: "flex", flexDirection: "column", gap: 0, marginTop: 4 }}>
@@ -406,13 +430,38 @@ export function RecipeDetailOverlay({
             background: T.surface2,
             borderLeft: isMobile ? "none" : `1px solid ${T.hairline2}`,
             borderTop: isMobile ? `1px solid ${T.hairline2}` : "none",
-            padding: isMobile ? "20px 16px 24px" : "28px 24px",
+            padding: isMobile ? (makeExpanded ? "16px 16px 24px" : "0") : "28px 24px",
             display: "flex",
             flexDirection: "column",
             gap: 18,
             flexShrink: 0,
           }}
         >
+          {isMobile ? (
+            <button
+              type="button"
+              onClick={() => setMakeOpen((o) => !o)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "14px 16px",
+                margin: makeExpanded ? "-16px -16px 0" : "0",
+                background: "transparent",
+                border: "none",
+                color: isMakeable ? accent : T.inkMuted,
+                fontFamily: T.mono,
+                fontSize: 12,
+                letterSpacing: "0.14em",
+                cursor: "pointer",
+              }}
+            >
+              <span>{isMakeable ? "✦ MAKE THIS DRINK" : "○ SHORT — DETAILS"}</span>
+              <span>{makeOpen ? "▾" : "▸"}</span>
+            </button>
+          ) : null}
+
+          {makeExpanded ? (
           <div>
             <div style={{ fontSize: 10, fontFamily: T.mono, color: accent, letterSpacing: "0.18em" }}>POUR BINDING</div>
             <div style={{ fontSize: 22, color: T.ink, fontWeight: 500, marginTop: 4, letterSpacing: "-0.01em" }}>
@@ -422,7 +471,10 @@ export function RecipeDetailOverlay({
               Backbar will deplete the bound bottles and log a pour event. Bindings prefer the most-depleted valid bottle.
             </div>
           </div>
+          ) : null}
 
+          {makeExpanded ? (
+          <>
           <div style={{ display: "flex", flexDirection: "column", gap: 6, overflow: "auto" }}>
             {bindings.map((b, i) => {
               const isAccessory = b.ing.optional || b.ing.garnish;
@@ -633,6 +685,8 @@ export function RecipeDetailOverlay({
               ))}
             </div>
           </div>
+          </>
+          ) : null}
         </div>
       </div>
     </div>

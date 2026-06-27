@@ -545,6 +545,9 @@ interface RecipeRow {
   instructions: string | null;
   source: string | null;
   provenance: string | null;
+  author: string | null;
+  origin: string | null;
+  notes: string | null;
   abv_estimate: number | null;
   balance: string | null;
   is_published: number;
@@ -591,6 +594,9 @@ function recipeFromRow(r: RecipeRow, ingredients: RecipeIngredient[]): Recipe {
     instructions: r.instructions,
     source: r.source,
     provenance: r.provenance,
+    author: r.author,
+    origin: r.origin,
+    notes: r.notes,
     abv_estimate: r.abv_estimate,
     balance: r.balance ? JSON.parse(r.balance) : null,
     is_published: r.is_published === 1,
@@ -618,8 +624,8 @@ export const recipes = (db: DB) => ({
       db.run(
         `INSERT INTO recipe
          (id, name, family, method, glass, ice, garnish, instructions,
-          source, provenance, abv_estimate, balance, is_published, tags)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          source, provenance, author, origin, notes, abv_estimate, balance, is_published, tags)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           parsed.id,
           parsed.name,
@@ -631,6 +637,9 @@ export const recipes = (db: DB) => ({
           parsed.instructions ?? null,
           parsed.source ?? null,
           parsed.provenance ?? null,
+          parsed.author ?? null,
+          parsed.origin ?? null,
+          parsed.notes ?? null,
           parsed.abv_estimate ?? null,
           parsed.balance ? json(parsed.balance) : null,
           bool(parsed.is_published),
