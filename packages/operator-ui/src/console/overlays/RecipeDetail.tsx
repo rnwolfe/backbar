@@ -152,9 +152,11 @@ export function RecipeDetailOverlay({
           border: isMobile ? "none" : `1px solid ${T.hairline2}`,
           display: "flex",
           flexDirection: isMobile ? "column" : "row",
-          // The scroll lives on the inner content column (minHeight:0) so the
-          // make rail stays pinned; the shell itself never scrolls.
-          overflow: "hidden",
+          // Mobile: the whole sheet scrolls as one document (children flow at
+          // natural height) — matches the BottleDetail/ProductDetail overlays.
+          // Desktop: shell is fixed and each column scrolls internally.
+          overflow: isMobile ? "auto" : "hidden",
+          WebkitOverflowScrolling: "touch",
           position: "relative",
           boxShadow: isMobile ? "none" : "0 24px 80px rgba(0,0,0,0.7)",
           paddingTop: isMobile ? "var(--safe-top, 0px)" : 0,
@@ -162,14 +164,31 @@ export function RecipeDetailOverlay({
         }}
       >
         <div
-          style={{
-            position: "absolute",
-            top: 14,
-            right: 14,
-            display: "flex",
-            gap: 6,
-            zIndex: 2,
-          }}
+          style={
+            isMobile
+              ? {
+                  // In-flow sticky top bar on mobile so the actions don't float
+                  // over the breadcrumb/title. Right-aligned, scrolls-pinned.
+                  position: "sticky",
+                  top: 0,
+                  zIndex: 4,
+                  display: "flex",
+                  flexWrap: "wrap",
+                  justifyContent: "flex-end",
+                  gap: 6,
+                  padding: "10px 12px",
+                  background: T.surface,
+                  borderBottom: `1px solid ${T.hairline}`,
+                }
+              : {
+                  position: "absolute",
+                  top: 14,
+                  right: 14,
+                  display: "flex",
+                  gap: 6,
+                  zIndex: 2,
+                }
+          }
         >
           <HeaderAction
             label="SHARE"
@@ -207,15 +226,16 @@ export function RecipeDetailOverlay({
 
         <div
           style={{
-            flex: 1,
-            // minHeight:0 is required for a flex child to actually scroll instead
-            // of growing to fit content (which crammed the mobile recipe view).
-            minHeight: 0,
-            padding: isMobile ? "20px 16px" : "28px 32px",
+            // Mobile: natural height so the sheet scrolls as one. Desktop: flex
+            // child that scrolls internally (minHeight:0 makes overflow work).
+            flex: isMobile ? "0 0 auto" : 1,
+            minHeight: isMobile ? undefined : 0,
+            // bottom buffer so the sticky "make" bar never covers the last content
+            padding: isMobile ? "20px 16px 76px" : "28px 32px",
             display: "flex",
             flexDirection: "column",
             gap: 18,
-            overflowY: "auto",
+            overflowY: isMobile ? "visible" : "auto",
           }}
         >
           <div>
@@ -442,9 +462,12 @@ export function RecipeDetailOverlay({
             flexDirection: "column",
             gap: 18,
             flexShrink: 0,
-            // On mobile, the pinned rail caps its height + scrolls internally so
-            // an expanded pour panel can't push the scrollable spec off-screen.
-            maxHeight: isMobile && makeExpanded ? "55vh" : undefined,
+            // Mobile: pin the bar to the bottom of the scrolling sheet as a
+            // persistent CTA; when expanded it becomes a capped bottom-sheet.
+            position: isMobile ? "sticky" : undefined,
+            bottom: isMobile ? 0 : undefined,
+            zIndex: isMobile ? 3 : undefined,
+            maxHeight: isMobile && makeExpanded ? "72vh" : undefined,
             overflowY: isMobile && makeExpanded ? "auto" : undefined,
           }}
         >
