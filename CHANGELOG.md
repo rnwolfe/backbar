@@ -8,6 +8,18 @@ version.
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-06-27
+
+Enhanced recipe management with attribution tracking and mobile improvements.
+
+### Added
+
+- **Recipe attribution tracking.** Recipes now store author, origin, and notes information that's preserved during import and displayed on recipe details.
+
+### Fixed
+
+- **Mobile recipe navigation.** Recipe panels and navigation icons now display correctly on mobile devices.
+
 ## [0.7.0] - 2026-06-26
 
 Introducing reusable recipe components for complex homemade ingredients like syrups and infusions.
