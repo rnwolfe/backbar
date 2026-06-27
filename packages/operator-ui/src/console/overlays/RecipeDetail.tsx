@@ -152,7 +152,9 @@ export function RecipeDetailOverlay({
           border: isMobile ? "none" : `1px solid ${T.hairline2}`,
           display: "flex",
           flexDirection: isMobile ? "column" : "row",
-          overflow: isMobile ? "auto" : "hidden",
+          // The scroll lives on the inner content column (minHeight:0) so the
+          // make rail stays pinned; the shell itself never scrolls.
+          overflow: "hidden",
           position: "relative",
           boxShadow: isMobile ? "none" : "0 24px 80px rgba(0,0,0,0.7)",
           paddingTop: isMobile ? "var(--safe-top, 0px)" : 0,
@@ -206,11 +208,14 @@ export function RecipeDetailOverlay({
         <div
           style={{
             flex: 1,
-            padding: "28px 32px",
+            // minHeight:0 is required for a flex child to actually scroll instead
+            // of growing to fit content (which crammed the mobile recipe view).
+            minHeight: 0,
+            padding: isMobile ? "20px 16px" : "28px 32px",
             display: "flex",
             flexDirection: "column",
             gap: 18,
-            overflow: "auto",
+            overflowY: "auto",
           }}
         >
           <div>
@@ -307,7 +312,9 @@ export function RecipeDetailOverlay({
                     → {b.bottle?.name ?? "—"}
                   </span>
                   <span style={{ fontFamily: T.mono, fontSize: 13, color: T.ink, fontWeight: 500 }}>
-                    {b.ing.amount_ml >= 5 ? `${b.ing.amount_ml}ml` : `${b.ing.amount_ml} dash`}
+                    {b.ing.amount != null
+                      ? `${+b.ing.amount.toFixed(2)} ${b.ing.unit ?? "ml"}`
+                      : "—"}
                   </span>
                   <span
                     style={{
@@ -435,6 +442,10 @@ export function RecipeDetailOverlay({
             flexDirection: "column",
             gap: 18,
             flexShrink: 0,
+            // On mobile, the pinned rail caps its height + scrolls internally so
+            // an expanded pour panel can't push the scrollable spec off-screen.
+            maxHeight: isMobile && makeExpanded ? "55vh" : undefined,
+            overflowY: isMobile && makeExpanded ? "auto" : undefined,
           }}
         >
           {isMobile ? (

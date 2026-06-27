@@ -4,6 +4,7 @@
  * grouping). Pure functions; no React.
  */
 import type { Product, Recipe, Node as NodeRow } from "@backbar/core";
+import { toMl } from "@backbar/core";
 import type { BottleWithProduct, MakeableItem } from "../api/client";
 
 export interface ConsoleCategory {
@@ -151,6 +152,10 @@ export interface JoinedRecipe {
     product: string;
     label: string;
     amount_ml: number;
+    /** Original authored amount + unit (e.g. 2 "oz") for display — amount_ml is
+     *  the converted value used for binding/volume math. */
+    amount: number | null;
+    unit: string | null;
     /** Per-ingredient flags from the recipe — surface in detail UI + skip from binding checks. */
     optional: boolean;
     garnish: boolean;
@@ -181,6 +186,8 @@ export function joinRecipes(
         label:
           ing.label ?? (ing.ref_type === "product" ? productById.get(refId)?.name ?? refId : refId),
         amount_ml: toMl(ing.amount ?? 0, ing.unit ?? "ml"),
+        amount: ing.amount ?? null,
+        unit: ing.unit ?? null,
         optional: Boolean(ing.optional),
         garnish: Boolean(ing.garnish),
         ref_type: ing.ref_type,
@@ -211,22 +218,6 @@ export function joinRecipes(
  * sweet/sour/bitter/strong/aromatic/dilution). Falls back to a synthesized
  * profile when the recipe hasn't been balance-rated yet.
  */
-/** Rough unit→ml conversion used purely for display in recipe specs. */
-function toMl(amount: number, unit: string): number {
-  switch (unit) {
-    case "ml":
-      return amount;
-    case "dash":
-      return amount * 0.9;
-    case "barspoon":
-      return amount * 5;
-    case "each":
-    case "leaf":
-    case "top":
-    default:
-      return amount;
-  }
-}
 
 function recipeBalance(r: Recipe): number[] {
   const b = r.balance;
