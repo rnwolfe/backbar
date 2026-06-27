@@ -8,6 +8,15 @@ version.
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-06-27
+
+This maintenance release improves mobile recipe viewing and measurement displays.
+
+### Fixed
+
+- **Mobile recipe scrolling.** Recipe details now scroll properly on mobile devices instead of getting cut off at the bottom.
+- **Unit display accuracy.** Measurements now show the correct oz and unit labels throughout the app.
+
 ## [0.8.0] - 2026-06-27
 
 Enhanced recipe management with attribution tracking and mobile improvements.
