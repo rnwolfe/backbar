@@ -8,6 +8,15 @@ version.
 
 ## [Unreleased]
 
+## [0.8.2] - 2026-06-27
+
+Mobile recipe viewing gets a major UX overhaul with better scrolling and persistent actions.
+
+### Fixed
+
+- **Mobile recipe scrolling.** Recipe details now scroll smoothly as one document instead of clipping content in nested scroll areas.
+- **Persistent make-drink button.** The 'make this drink' action bar stays pinned at the bottom while you scroll through recipe details.
+
 ## [0.8.1] - 2026-06-27
 
 This maintenance release improves mobile recipe viewing and measurement displays.
