@@ -8,6 +8,16 @@ version.
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-06-30
+
+A new rapid inventory sweep lets you walk the whole bar and update levels in one fast pass.
+
+### Added
+
+- **Rapid inventory sweep.** Burn through your shelf one bottle at a time: pick a bar-mode filter to scope the run, then tap a coarse fullness level (full / three-quarter / half / quarter / empty) and advance. Built for standing at the bar and updating a hundred bottles in minutes, not menus.
+- **Skip and recover.** Skip a bottle to come back to it without breaking your stride, and resume right where you left off — saves are double-submit-safe, so a stray double-tap won't write twice or skip ahead.
+- **Sweep progress.** A live progress indicator shows how far you are through the filtered set so you always know how many bottles are left.
+
 ## [0.8.2] - 2026-06-27
 
 Mobile recipe viewing gets a major UX overhaul with better scrolling and persistent actions.
