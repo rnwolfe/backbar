@@ -19,7 +19,7 @@
  * console grid, just the filter, the current bottle, and the controls. Sized
  * to work at 375px wide without horizontal overflow and on tablet consoles.
  */
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { SweepFilter, SweepLevelKey, SweepRow } from "../api/client";
 import { api } from "../api/client";
 import { useStore } from "../store/useStore";
@@ -67,8 +67,22 @@ export function Sweep({
   const [error, setError] = useState<string | null>(null);
   const [savedCount, setSavedCount] = useState(0);
   const [emptiedCount, setEmptiedCount] = useState(0);
+  const [skippedCount, setSkippedCount] = useState(0);
+
+  // Synchronous re-entrancy guard. `saving` (React state) only disables the
+  // controls on the *next* render, so a fast double-tap fires two click events
+  // in one tick that both observe `saving === false` and POST twice. The ref
+  // flips synchronously, so the second tap — save OR skip — returns immediately.
+  const busy = useRef(false);
 
   const current = rows[cursor] ?? null;
+
+  /** Move past the current bottle; the exhausted list lands on the done state. */
+  function advance() {
+    const next = cursor + 1;
+    if (next >= rows.length) setPhase("done");
+    else setCursor(next);
+  }
 
   async function startSweep() {
     if (loading) return;
@@ -80,6 +94,7 @@ export function Sweep({
       setCursor(0);
       setSavedCount(0);
       setEmptiedCount(0);
+      setSkippedCount(0);
       setPhase(res.count === 0 ? "done" : "sweep");
     } catch (e) {
       setError(e instanceof Error ? e.message : "failed to load bottles");
@@ -89,7 +104,8 @@ export function Sweep({
   }
 
   async function save(level: SweepLevelKey) {
-    if (!current || saving) return;
+    if (!current || busy.current) return;
+    busy.current = true;
     setSaving(true);
     setError(null);
     try {
@@ -104,16 +120,23 @@ export function Sweep({
         onToast(sig?.out ? `${name} out — added to shopping list` : `${name} → shopping list`);
       }
       // On a 2xx, advance immediately. End of list → completion state.
-      const next = cursor + 1;
-      if (next >= rows.length) setPhase("done");
-      else setCursor(next);
+      advance();
     } catch (e) {
       // Stay on the current bottle and surface the error — never advance on
-      // failure. The operator retries by tapping again.
+      // failure. The operator retries by tapping the level again.
       setError(e instanceof Error ? e.message : "save failed — try again");
     } finally {
+      busy.current = false;
       setSaving(false);
     }
+  }
+
+  /** Move to the next bottle without recording a reading. */
+  function skip() {
+    if (!current || busy.current) return;
+    setError(null);
+    setSkippedCount((n) => n + 1);
+    advance();
   }
 
   function backToFilter() {
@@ -216,12 +239,14 @@ export function Sweep({
           saving={saving}
           error={error}
           onSave={(lvl) => void save(lvl)}
+          onSkip={skip}
         />
       ) : (
         <DoneStep
           accent={accent}
           total={savedCount}
           emptied={emptiedCount}
+          skipped={skippedCount}
           empty={rows.length === 0}
           onNewSweep={backToFilter}
           onExit={onClose}
@@ -408,12 +433,14 @@ function SweepStep({
   saving,
   error,
   onSave,
+  onSkip,
 }: {
   row: SweepRow;
   accent: string;
   saving: boolean;
   error: string | null;
   onSave(level: SweepLevelKey): void;
+  onSkip(): void;
 }) {
   const d = row.display;
   const hue = d.category_hue;
@@ -544,6 +571,27 @@ function SweepStep({
           >
             EMPTY / GONE
           </button>
+          {/* Skip — advance without recording a reading. Secondary weight so
+              it never reads as a fill choice; blocked while a save is in flight. */}
+          <button
+            type="button"
+            disabled={saving}
+            onClick={onSkip}
+            style={{
+              height: 56,
+              width: "100%",
+              background: "transparent",
+              border: `1px solid ${T.hairline2}`,
+              color: T.inkMuted,
+              fontFamily: T.mono,
+              fontSize: 14,
+              letterSpacing: "0.14em",
+              cursor: saving ? "default" : "pointer",
+              opacity: saving ? 0.5 : 1,
+            }}
+          >
+            SKIP →
+          </button>
         </div>
       </div>
     </div>
@@ -556,6 +604,7 @@ function DoneStep({
   accent,
   total,
   emptied,
+  skipped,
   empty,
   onNewSweep,
   onExit,
@@ -563,6 +612,7 @@ function DoneStep({
   accent: string;
   total: number;
   emptied: number;
+  skipped: number;
   empty: boolean;
   onNewSweep(): void;
   onExit(): void;
@@ -596,6 +646,12 @@ function DoneStep({
             <>
               {" · "}
               {emptied} marked empty
+            </>
+          ) : null}
+          {skipped > 0 ? (
+            <>
+              {" · "}
+              {skipped} skipped
             </>
           ) : null}
         </p>
