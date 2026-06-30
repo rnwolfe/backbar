@@ -163,6 +163,19 @@ const builtins: Command[] = [
     },
   },
 
+  // ─── rapid inventory sweep ───────────────────────────────────────────────
+  {
+    id: "inventory.sweep",
+    title: "Rapid inventory sweep…",
+    group: "inventory",
+    keywords: ["sweep", "bar mode", "fill", "level", "walk", "shelf", "quick", "stocktake", "count"],
+    icon: "⊞",
+    run: (ctx) => {
+      ctx.palette.close();
+      ctx.palette.openSweep?.();
+    },
+  },
+
   // ─── inventory bulk import ───────────────────────────────────────────────
   {
     id: "inventory.bulk-import-photo",
