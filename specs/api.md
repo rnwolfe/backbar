@@ -57,14 +57,24 @@ POST   /menu/publish                    -> { url, count }    (snapshot mode; see
 
 ## 2. Operator inventory sweep contract
 
-The rapid inventory sweep is a stateless operator-client workflow over the existing bottle list and manual ingest endpoint. The server does not create a sweep session row; the client owns the selected filter, ordered bottle ids, cursor, and "last saved" UI state.
+The rapid inventory sweep is a stateless operator-client workflow backed by two dedicated server paths plus the existing shopping projection. The server does not create a sweep session row; the client owns the selected filter, ordered bottle ids, cursor, and "last saved" UI state.
+
+```
+GET    /sweep/bottles?status=&category=&tracked=&low=&q=   -> { controls, count, bottles[] }
+POST   /sweep/level   { bottle_id, level }                 -> { ok, reading_id, level_ml, status, flipped_empty, shopping_signal? }
+```
 
 **Start from a selected bottle filter**
 
-1. Operator chooses a bottle filter in the client, for example status, shelf/slot, tracked/manual, category, product tag, low-stock, or text search.
-2. Client fetches bottle state with `GET /bottles` or `GET /bottles?status=<sealed|open|empty|archived>`. The response is the sweep source of truth: `(Bottle & {product})[]`.
-3. Client applies any filter predicates not represented by the `status` query to the fetched rows, sorts them in the operator-selected order, stores the resulting bottle ids as the active sweep list, and starts at cursor `0`.
-4. A sweep row must include enough data to compute saved levels locally: `bottle.id`, `bottle.full_ml`, `bottle.level_ml`, `bottle.status`, and `product.name` at minimum.
+1. Operator chooses a bottle filter in the client: `status` (`sealed|open|empty|archived`), `category` (product category slug), `tracked` (bool), `low` (low-stock only), and `q` (case-insensitive product-name search). All optional, AND-combined.
+2. Client fetches the ordered source list with `GET /sweep/bottles?…`. The response is the sweep source of truth:
+   - `controls` — the fixed control set (below), so the tap UI and server agree.
+   - `bottles[]` — each `{ bottle, product, category, display }`. `display` carries `{ name, category, category_label, category_hue, slot, status, tracked, level_ml, full_ml, fill_pct, low }` so the tap UI renders without a second round-trip.
+   - Rows are ordered by category sort, then product name, then slot — a stable shelf-walk order the client locks as the sweep id list.
+3. Client may apply additional client-only ordering, then stores the resulting bottle ids as the active sweep list and starts at cursor `0`.
+4. A sweep row already includes everything needed to compute saved levels: `bottle.full_ml`, `bottle.level_ml`, `bottle.status`, and `product.name`.
+
+`GET /sweep/bottles` is a superset of `GET /bottles` for this flow; clients should prefer it so category + display metadata stay server-owned.
 
 **Controls**
 
@@ -80,35 +90,26 @@ The rapid sweep control surface is intentionally fixed-size for fast tapping. It
 
 **Save and advance**
 
-For each selected bottle, the client submits the chosen level through the existing append-only inventory pipeline:
+For each selected bottle, the client submits the chosen control key — the server resolves it to `level_ml` off that bottle's `full_ml`:
 
 ```http
-POST /ingest/reading
+POST /sweep/level
 Content-Type: application/json
 
-{ "kind": "manual", "bottle_id": "<bottle uuid>", "level_ml": 375 }
+{ "bottle_id": "<bottle uuid>", "level": "75" }
 ```
 
-`kind:"manual"` is optional for compatibility with the base `ManualReading` shape, but clients should send it for clarity. Manual sweep writes do not require HMAC. On success the server returns `{ok:true, reading_id, level_ml}` after `applyReading()` inserts `reading{source:"manual"}`, updates the rebuildable `bottle.level_ml` cache, recomputes makeability, emits `reading.updated`, and emits any resulting low-stock or makeability transitions. Every saved sweep selection therefore creates a manual reading; clients must never implement sweep by `PATCH /bottles/:id` level mutation.
+`level ∈ "empty"|"25"|"50"|"75"|"100"`, validated by Zod before any DB touch. Sweep writes do not require HMAC. On success the server returns `{ok:true, reading_id, level_ml, status, flipped_empty}` after routing through the same `applyReading()` ingest core as `POST /ingest/reading`: it inserts `reading{source:"manual"}`, updates the rebuildable `bottle.level_ml` cache, flips `status→empty` at the empty threshold, recomputes makeability, emits `reading.updated`, and emits any resulting low-stock / makeability transitions. Every saved sweep selection therefore creates one append-only manual reading; clients must never implement sweep by `PATCH /bottles/:id` level mutation. (`POST /ingest/reading` with an explicit `level_ml` remains valid; `/sweep/level` is the quarter-fill convenience over it.)
 
 After a `2xx` save, the client advances to the next id in the filtered list immediately. If the save fails, the client stays on the current bottle and displays the error; it must not advance or mark the bottle complete. The client may optimistically render the selected level while waiting, but must reconcile with the returned `level_ml` and subsequent `reading.updated` WebSocket event.
 
-When the cursor reaches the end of the filtered id list, the client may refetch `GET /bottles` and `GET /shopping-list` to display the sweep summary and replacement prompts. The original filtered list remains stable during the sweep; newly added bottles or concurrent status changes are picked up only by starting another sweep or explicitly refreshing.
+When the cursor reaches the end of the filtered id list, the client may refetch `GET /sweep/bottles` and `GET /shopping-list` to display the sweep summary and replacement prompts. The original filtered list remains stable during the sweep; newly added bottles or concurrent status changes are picked up only by starting another sweep or explicitly refreshing.
 
 **Empty / gone**
 
-Empty / gone is a saved manual reading with `level_ml = 0`, not a deletion command:
+Empty / gone is `level: "empty"` — a saved manual reading with `level_ml = 0`, not a deletion command. The ingest core records an append-only zero-level `reading{source:"manual"}` and flips the bottle status to `empty` per the normal empty threshold. The client must not call `DELETE /bottles/:id` as part of the rapid sweep, because bottle rows and readings preserve inventory and pour history until the operator explicitly archives or deletes them outside the sweep.
 
-```http
-POST /ingest/reading
-Content-Type: application/json
-
-{ "kind": "manual", "bottle_id": "<bottle uuid>", "level_ml": 0 }
-```
-
-The ingest core records an append-only zero-level `reading{source:"manual"}` and may flip the bottle status to `empty` according to the normal empty threshold. The client must not call `DELETE /bottles/:id` as part of the rapid sweep, because bottle rows and readings preserve inventory and pour history until the operator explicitly archives or deletes them outside the sweep.
-
-After an empty / gone save, the shopping projection must surface a replacement signal through `GET /shopping-list`: either the zero-level bottle in the low/replacement list or a product-level replacement prompt for the depleted product. That replacement signal is advisory; it does not remove the historical bottle row and does not silently create a new bottle.
+On an empty/gone save the response additionally carries `shopping_signal` — the product-level replacement prompt for the depleted product: `{ product, depleted_bottle_ids[], remaining_in_stock, out }`. The same signal is projected by `GET /shopping-list` under a `replacements[]` array, coalesced by product (a second emptied bottle of the same product updates the one entry rather than duplicating it). `out` is true when no in-stock bottle of that product remains. The replacement signal is advisory; it does not remove the historical bottle row and does not silently create a new bottle.
 
 ---
 

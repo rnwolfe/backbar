@@ -254,6 +254,14 @@ export interface MakeableItem {
 
 export interface ShoppingList {
   low: BottleWithProduct[];
+  /** Depleted products (a bottle marked empty/gone in the rapid sweep),
+   *  coalesced by product. `out` is true when no in-stock bottle remains. */
+  replacements: {
+    product: Partial<Product> & { id: string };
+    depleted_bottle_ids: string[];
+    remaining_in_stock: number;
+    out: boolean;
+  }[];
   muse: { product: Partial<Product> & { id: string }; unlocks: string[] }[];
 }
 

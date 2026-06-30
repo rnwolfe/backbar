@@ -1,11 +1,11 @@
 ---
 id: task-018
 title: Add server support for filtered sweep listing and rapid level saves
-status: ready
+status: done
 priority: med
 estimate: medium
 created: 2026-06-30T02:18:02.364Z
-updated: 2026-06-30T02:18:02.364Z
+updated: 2026-06-30T04:10:00.000Z
 labels:
   - feature-plan-task
 sourcePlanId: si2b4s6gktmw3lko08yaaje9
