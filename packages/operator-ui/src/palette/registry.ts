@@ -22,6 +22,7 @@ export interface AppCtx {
     pushPourConfirm(recipe: Recipe & { makeable?: MakeableItem }): void;
     toast(text: string): void;
     openBulkImportInventory?(): void;
+    openSweep?(): void;
   };
 }
 

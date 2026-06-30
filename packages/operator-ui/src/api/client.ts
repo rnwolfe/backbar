@@ -265,6 +265,72 @@ export interface ShoppingList {
   muse: { product: Partial<Product> & { id: string }; unlocks: string[] }[];
 }
 
+// ─── rapid inventory sweep (spec api.md §2) ───────────────────────────────
+
+/** Fixed sweep control keys — empty/gone plus the four quarter fills. */
+export const SWEEP_LEVEL_KEYS = ["empty", "25", "50", "75", "100"] as const;
+export type SweepLevelKey = (typeof SWEEP_LEVEL_KEYS)[number];
+
+/** Filter criteria for `GET /sweep/bottles` — all optional, AND-combined. */
+export interface SweepFilter {
+  status?: Bottle["status"];
+  category?: string;
+  tracked?: boolean;
+  low?: boolean;
+  q?: string;
+}
+
+/** Display metadata the tap UI renders without a second round-trip. */
+export interface SweepDisplay {
+  name: string;
+  category: string | null;
+  category_label: string | null;
+  category_hue: number | null;
+  slot: string | null;
+  status: Bottle["status"];
+  tracked: boolean;
+  level_ml: number;
+  full_ml: number;
+  fill_pct: number;
+  low: boolean;
+}
+
+export interface SweepRow {
+  bottle: Bottle;
+  product: Product | null;
+  category: Category | null;
+  display: SweepDisplay;
+}
+
+export interface SweepControl {
+  key: SweepLevelKey;
+  label: string;
+  fraction: number;
+}
+
+export interface SweepBottlesResponse {
+  controls: SweepControl[];
+  count: number;
+  bottles: SweepRow[];
+}
+
+/** The product-level replacement signal an empty/gone save surfaces. */
+export interface SweepShoppingSignal {
+  product: Partial<Product> & { id: string };
+  depleted_bottle_ids: string[];
+  remaining_in_stock: number;
+  out: boolean;
+}
+
+export interface SweepLevelResponse {
+  ok: boolean;
+  reading_id: string;
+  level_ml: number;
+  status: Bottle["status"];
+  flipped_empty: boolean;
+  shopping_signal?: SweepShoppingSignal;
+}
+
 export interface AdminResetBarResponse {
   ok: boolean;
   deleted: { bottles: number; products: number };
@@ -383,6 +449,19 @@ export const api = {
   makeable: () => req<MakeableItem[]>("/makeable"),
   nodes: () => req<NodeWithChannels[]>("/nodes"),
   shopping: () => req<ShoppingList>("/shopping-list"),
+  // ── rapid inventory sweep ───────────────────────────────────────────────
+  sweepBottles: (filter: SweepFilter = {}) => {
+    const q = new URLSearchParams();
+    if (filter.status) q.set("status", filter.status);
+    if (filter.category) q.set("category", filter.category);
+    if (filter.tracked != null) q.set("tracked", String(filter.tracked));
+    if (filter.low != null) q.set("low", String(filter.low));
+    if (filter.q) q.set("q", filter.q);
+    const qs = q.toString();
+    return req<SweepBottlesResponse>(`/sweep/bottles${qs ? `?${qs}` : ""}`);
+  },
+  sweepLevel: (body: { bottle_id: string; level: SweepLevelKey }) =>
+    req<SweepLevelResponse>("/sweep/level", { method: "POST", body: JSON.stringify(body) }),
   telemetry: () => req<Telemetry>("/telemetry"),
   pours: (params: { since?: number; limit?: number } = {}) => {
     const q = new URLSearchParams();

@@ -48,6 +48,7 @@ import { ChatDock } from "./chat/ChatDock";
 import type { ChatContext } from "./chat/types";
 import { Settings } from "./views/Settings";
 import { ServiceMode } from "./views/ServiceMode";
+import { Sweep } from "./views/Sweep";
 import { Shelf } from "./views/Shelf";
 
 interface Toast {
@@ -153,6 +154,7 @@ export function App() {
   >(null);
   const [importPhotoOpen, setImportPhotoOpen] = useState(false);
   const [bulkImportOpen, setBulkImportOpen] = useState(false);
+  const [sweepOpen, setSweepOpen] = useState(false);
 
   const accentColor = accent(tweaks.accent).primary;
 
@@ -480,7 +482,12 @@ export function App() {
           onPickRecipe={(r) => openRecipe(r)}
           onToast={pushToast}
           onBulkImportInventory={() => setBulkImportOpen(true)}
+          onOpenSweep={() => setSweepOpen(true)}
         />
+
+        {sweepOpen ? (
+          <Sweep onClose={() => setSweepOpen(false)} onToast={pushToast} accent={accentColor} />
+        ) : null}
 
         {/* TweaksPanel is desktop-only; the mobile chrome doesn't have room
             for a floating accessory. Operators get the same controls in

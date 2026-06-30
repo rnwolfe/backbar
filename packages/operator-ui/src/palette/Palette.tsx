@@ -42,9 +42,10 @@ interface Props {
   onPickRecipe?(recipe: Recipe): void;
   onToast(text: string): void;
   onBulkImportInventory?(): void;
+  onOpenSweep?(): void;
 }
 
-export function Palette({ open, onClose, onNav, onPickRecipe, onToast, onBulkImportInventory }: Props) {
+export function Palette({ open, onClose, onNav, onPickRecipe, onToast, onBulkImportInventory, onOpenSweep }: Props) {
   const products = useStore((s) => s.products);
   const bottles = useStore((s) => s.bottles);
   const recipes = useStore((s) => s.recipes);
@@ -171,6 +172,7 @@ export function Palette({ open, onClose, onNav, onPickRecipe, onToast, onBulkImp
       pushPourConfirm: (recipe) => setScreen({ kind: "pour-confirm", recipe }),
       toast: onToast,
       openBulkImportInventory: onBulkImportInventory,
+      openSweep: onOpenSweep,
     },
   };
 
