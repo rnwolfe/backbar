@@ -18,6 +18,7 @@ import { readingsRouter } from "./routes/readings";
 import { recipesRouter } from "./routes/recipes";
 import { settingsRouter } from "./routes/settings";
 import { shoppingRouter } from "./routes/shopping";
+import { sweepRouter } from "./routes/sweep";
 import { telemetryRouter } from "./routes/telemetry";
 
 /**
@@ -53,6 +54,7 @@ export function buildApp(deps: Deps) {
   app.route("/pour", pourRouter(deps));
   app.route("/pours", poursRouter(deps));
   app.route("/shopping-list", shoppingRouter(deps));
+  app.route("/sweep", sweepRouter(deps));
   app.route("/telemetry", telemetryRouter(deps));
   app.route("/ai", aiRouter(deps, { hasGateway }));
   app.route("/inventory", inventoryImportRouter(deps, { hasGateway }));

@@ -101,7 +101,7 @@ const initial: AppStore = {
   components: [],
   makeable: [],
   nodes: [],
-  shopping: { low: [], muse: [] },
+  shopping: { low: [], replacements: [], muse: [] },
   pours: [],
   poursSummary: [],
   topRecipes: [],
