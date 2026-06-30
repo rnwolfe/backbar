@@ -55,7 +55,64 @@ POST   /menu/publish                    -> { url, count }    (snapshot mode; see
 
 ---
 
-## 2. Ingest core (one core, two adapters)
+## 2. Operator inventory sweep contract
+
+The rapid inventory sweep is a stateless operator-client workflow over the existing bottle list and manual ingest endpoint. The server does not create a sweep session row; the client owns the selected filter, ordered bottle ids, cursor, and "last saved" UI state.
+
+**Start from a selected bottle filter**
+
+1. Operator chooses a bottle filter in the client, for example status, shelf/slot, tracked/manual, category, product tag, low-stock, or text search.
+2. Client fetches bottle state with `GET /bottles` or `GET /bottles?status=<sealed|open|empty|archived>`. The response is the sweep source of truth: `(Bottle & {product})[]`.
+3. Client applies any filter predicates not represented by the `status` query to the fetched rows, sorts them in the operator-selected order, stores the resulting bottle ids as the active sweep list, and starts at cursor `0`.
+4. A sweep row must include enough data to compute saved levels locally: `bottle.id`, `bottle.full_ml`, `bottle.level_ml`, `bottle.status`, and `product.name` at minimum.
+
+**Controls**
+
+The rapid sweep control surface is intentionally fixed-size for fast tapping. It must offer exactly these saved selections:
+
+| Control | Manual reading submitted |
+|---|---|
+| Empty / gone | `level_ml = 0` |
+| 25% | `level_ml = round(bottle.full_ml * 0.25)` |
+| 50% | `level_ml = round(bottle.full_ml * 0.50)` |
+| 75% | `level_ml = round(bottle.full_ml * 0.75)` |
+| 100% | `level_ml = bottle.full_ml` |
+
+**Save and advance**
+
+For each selected bottle, the client submits the chosen level through the existing append-only inventory pipeline:
+
+```http
+POST /ingest/reading
+Content-Type: application/json
+
+{ "kind": "manual", "bottle_id": "<bottle uuid>", "level_ml": 375 }
+```
+
+`kind:"manual"` is optional for compatibility with the base `ManualReading` shape, but clients should send it for clarity. Manual sweep writes do not require HMAC. On success the server returns `{ok:true, reading_id, level_ml}` after `applyReading()` inserts `reading{source:"manual"}`, updates the rebuildable `bottle.level_ml` cache, recomputes makeability, emits `reading.updated`, and emits any resulting low-stock or makeability transitions. Every saved sweep selection therefore creates a manual reading; clients must never implement sweep by `PATCH /bottles/:id` level mutation.
+
+After a `2xx` save, the client advances to the next id in the filtered list immediately. If the save fails, the client stays on the current bottle and displays the error; it must not advance or mark the bottle complete. The client may optimistically render the selected level while waiting, but must reconcile with the returned `level_ml` and subsequent `reading.updated` WebSocket event.
+
+When the cursor reaches the end of the filtered id list, the client may refetch `GET /bottles` and `GET /shopping-list` to display the sweep summary and replacement prompts. The original filtered list remains stable during the sweep; newly added bottles or concurrent status changes are picked up only by starting another sweep or explicitly refreshing.
+
+**Empty / gone**
+
+Empty / gone is a saved manual reading with `level_ml = 0`, not a deletion command:
+
+```http
+POST /ingest/reading
+Content-Type: application/json
+
+{ "kind": "manual", "bottle_id": "<bottle uuid>", "level_ml": 0 }
+```
+
+The ingest core records an append-only zero-level `reading{source:"manual"}` and may flip the bottle status to `empty` according to the normal empty threshold. The client must not call `DELETE /bottles/:id` as part of the rapid sweep, because bottle rows and readings preserve inventory and pour history until the operator explicitly archives or deletes them outside the sweep.
+
+After an empty / gone save, the shopping projection must surface a replacement signal through `GET /shopping-list`: either the zero-level bottle in the low/replacement list or a product-level replacement prompt for the depleted product. That replacement signal is advisory; it does not remove the historical bottle row and does not silently create a new bottle.
+
+---
+
+## 3. Ingest core (one core, two adapters)
 
 ```
 HTTP  POST /ingest/reading ──┐
@@ -71,7 +128,7 @@ MQTT  backbar/+/reading ─────┘
 
 ---
 
-## 3. MQTT adapter — `packages/server/mqtt`
+## 4. MQTT adapter — `packages/server/mqtt`
 
 Connect to `MQTT_URL` (local Mosquitto). Topics:
 ```
@@ -86,7 +143,7 @@ Subscriber maps `reading` payloads to `WeightReading{device_id,...}` and calls t
 
 ---
 
-## 4. WebSocket `/live`
+## 5. WebSocket `/live`
 
 Server→client events (JSON `{type, ...}`):
 ```
@@ -99,7 +156,7 @@ Operator UI hydrates from REST then patches from WS. Coalesce `reading.updated` 
 
 ---
 
-## 5. Webhook adapter — `packages/server/webhook`
+## 6. Webhook adapter — `packages/server/webhook`
 
 Generic, config-driven (env or a `webhook` config row). Fires on `lowstock.crossed` (and optionally `node.status=offline`).
 ```ts
@@ -115,7 +172,7 @@ Render template → fetch → on non-2xx, log + retry once (backoff). Never bloc
 
 ---
 
-## 6. Guest publish flow (`POST /menu/publish`)
+## 7. Guest publish flow (`POST /menu/publish`)
 
 **Snapshot mode (default):** build `guest-ui` against a read-only projection of `is_published` recipes that are currently `makeable`; emit static assets; push to Vercel (token in env); return `{url, count}`. Re-run on publish or on a `makeable.changed` that flips a published recipe (debounced).
 
